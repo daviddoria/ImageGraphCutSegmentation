@@ -1,13 +1,32 @@
+/*
+Copyright (C) 2012 David Doria, daviddoria@gmail.com
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "ImageGraphCut.h"
 
 // Submodules
 #include "Mask/ITKHelpers/Helpers/Helpers.h"
 #include "Mask/ITKHelpers/ITKHelpers.h"
 
+// ITK
 #include "itkImage.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkImageRegionConstIteratorWithIndex.h"
+#include "itkTestingComparisonImageFilter.h"
 #include "itkVectorImage.h"
 
 int main(int argc, char*argv[])
@@ -15,7 +34,7 @@ int main(int argc, char*argv[])
   // Verify arguments
   if(argc != 5)
     {
-    std::cerr << "Required: image foregroundMask backgroundMask output" << std::endl;
+    std::cerr << "Required: image foregroundMask backgroundMask baseline" << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -28,13 +47,13 @@ int main(int argc, char*argv[])
   // This image should have white pixels indicating background pixels and be black elsewhere.
   std::string backgroundFilename = argv[3];
 
-  std::string outputFilename = argv[4]; // Foreground/background segment mask
+  std::string baselineFilename = argv[4]; // The image of the correct segmentation
 
   // Output arguments
   std::cout << "imageFilename: " << imageFilename << std::endl
             << "foregroundFilename: " << foregroundFilename << std::endl
             << "backgroundFilename: " << backgroundFilename << std::endl
-            << "outputFilename: " << outputFilename << std::endl;
+            << "baselineFilename: " << baselineFilename << std::endl;
 
   // The type of the image to segment
   typedef itk::VectorImage<float, 2> ImageType;
@@ -47,10 +66,10 @@ int main(int argc, char*argv[])
 
   // Read the foreground and background stroke images
   Mask::Pointer foregroundMask = Mask::New();
-  foregroundMask->Read(foregroundFilename);
+  foregroundMask->ReadFromImage(foregroundFilename);
 
   Mask::Pointer backgroundMask = Mask::New();
-  backgroundMask->Read(backgroundFilename);
+  backgroundMask->ReadFromImage(backgroundFilename);
 
   // Perform the cut
   ImageGraphCut<ImageType> GraphCut;
@@ -66,5 +85,20 @@ int main(int argc, char*argv[])
   // Get and write the result
   Mask* result = GraphCut.GetSegmentMask();
 
-  ITKHelpers::WriteImage(result, outputFilename);
+  // Read the baseline image
+  Mask::Pointer baselineMask = Mask::New();
+  baselineMask->ReadFromImage(baselineFilename);
+
+  typedef itk::Testing::ComparisonImageFilter<Mask, Mask>
+      ComparisonFilterType;
+  ComparisonFilterType::Pointer comparisonFilter = ComparisonFilterType::New();
+  comparisonFilter->SetTestInput(result);
+  comparisonFilter->SetValidInput(baselineMask);
+
+  if(comparisonFilter->GetNumberOfPixelsWithDifferences() != 0)
+    {
+    return EXIT_FAILURE;
+    }
+
+  return EXIT_SUCCESS;
 }

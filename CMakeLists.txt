@@ -10,8 +10,10 @@ endif(UNIX)
 
 # ITK
 FIND_PACKAGE(ITK REQUIRED ITKCommon ITKIOImageBase ITKIOPNG ITKIOMeta
-                          ITKImageIntensity ITKImageFeature ITKMathematicalMorphology
-                          ITKBinaryMathematicalMorphology ITKDistanceMap)
+                          ITKImageIntensity ITKImageFeature
+                          ITKMathematicalMorphology
+                          ITKBinaryMathematicalMorphology ITKDistanceMap
+                          ITKTestKernel)
 INCLUDE( ${USE_ITK_FILE} )
 
 if( "${ITK_VERSION_MAJOR}" LESS 4 )
