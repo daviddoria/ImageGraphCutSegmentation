@@ -6,4 +6,4 @@ ${ITK_LIBRARIES}
 ${ImageGraphCutSegmentation_libraries})
 
 add_test(NAME ImageGraphCutSegmentationTest COMMAND ImageGraphCutSegmentationTest
-${CMAKE_SOURCE_DIR}/data/soldier.png ${CMAKE_SOURCE_DIR}/data/foreground.png ${CMAKE_SOURCE_DIR}/data/background.png output.png)
+${CMAKE_SOURCE_DIR}/data/soldier.png ${CMAKE_SOURCE_DIR}/data/foreground.png ${CMAKE_SOURCE_DIR}/data/background.png ${CMAKE_SOURCE_DIR}/data/soldier_baseline.png)
