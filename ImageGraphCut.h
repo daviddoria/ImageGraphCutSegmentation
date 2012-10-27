@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2010 David Doria, daviddoria@gmail.com
+Copyright (C) 2012 David Doria, daviddoria@gmail.com
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef IMAGEGRAPHCUT_H
-#define IMAGEGRAPHCUT_H
+#ifndef ImageGraphCut_H
+#define ImageGraphCut_H
 
 #include "Mask/Mask.h"
 
@@ -29,13 +29,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // STL
 #include <vector>
 
-// Custom
-#include "Types.h"
-
 // Kolmogorov's code
 #include "Kolmogorov/graph.h"
 typedef Graph GraphType;
 
+template <typename TImage>
 class ImageGraphCut
 {
 public:
@@ -51,10 +49,10 @@ public:
   typedef std::vector<itk::Index<2> > IndexContainer;
 
   /** Several initializations are done here. */
-  void SetImage(ImageType* const image);
+  void SetImage(TImage* const image);
 
   /** Get the image that we are segmenting. */
-  ImageType* GetImage();
+  TImage* GetImage();
 
   /** Create and cut the graph (The main driver function). */
   void PerformSegmentation();
@@ -106,6 +104,7 @@ protected:
   float RGBWeight;
 
   // Typedefs
+  typedef typename TImage::PixelType PixelType;
   typedef itk::Statistics::ListSample<PixelType> SampleType;
   typedef itk::Statistics::SampleToHistogramFilter<SampleType, HistogramType> SampleToHistogramFilterType;
 
@@ -125,20 +124,22 @@ protected:
   float PixelDifference(const PixelType& a, const PixelType& b);
 
   /** The ITK data structure for storing the values that we will compute the histogram of. */
-  SampleType::Pointer ForegroundSample;
-  SampleType::Pointer BackgroundSample;
+  typename SampleType::Pointer ForegroundSample;
+  typename SampleType::Pointer BackgroundSample;
 
   /** The histograms. */
   const HistogramType* ForegroundHistogram;
   const HistogramType* BackgroundHistogram;
 
   /** ITK filters to create histograms. */
-  SampleToHistogramFilterType::Pointer ForegroundHistogramFilter;
-  SampleToHistogramFilterType::Pointer BackgroundHistogramFilter;
+  typename SampleToHistogramFilterType::Pointer ForegroundHistogramFilter;
+  typename SampleToHistogramFilterType::Pointer BackgroundHistogramFilter;
 
   /** The image to be segmented */
-  ImageType::Pointer Image;
+  typename TImage::Pointer Image;
 
 };
+
+#include "ImageGraphCut.hpp"
 
 #endif

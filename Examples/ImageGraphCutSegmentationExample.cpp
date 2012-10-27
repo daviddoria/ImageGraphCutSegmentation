@@ -53,7 +53,7 @@ int main(int argc, char*argv[])
   backgroundMask->Read(backgroundFilename);
   
   // Perform the cut
-  ImageGraphCut GraphCut;
+  ImageGraphCut<ImageType> GraphCut;
   GraphCut.SetImage(reader->GetOutput());
   GraphCut.SetNumberOfHistogramBins(20);
   GraphCut.SetLambda(.01);

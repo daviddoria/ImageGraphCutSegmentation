@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2010 David Doria, daviddoria@gmail.com
+Copyright (C) 2012 David Doria, daviddoria@gmail.com
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,6 +15,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef ImageGraphCut_HPP
+#define ImageGraphCut_HPP
+
 #include "ImageGraphCut.h"
 
 // Submodules
@@ -29,9 +32,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // STL
 #include <cmath>
 
-void ImageGraphCut::SetImage(ImageType* const image)
+template <typename TImage>
+void ImageGraphCut<TImage>::SetImage(TImage* const image)
 {
-  this->Image = ImageType::New();
+  this->Image = TImage::New();
   //this->Image->Graft(image);
   ITKHelpers::DeepCopy(image, this->Image.GetPointer());
 
@@ -64,7 +68,8 @@ void ImageGraphCut::SetImage(ImageType* const image)
 
 }
 
-void ImageGraphCut::CutGraph()
+template <typename TImage>
+void ImageGraphCut<TImage>::CutGraph()
 {
   std::cout << "RGBWeight: " << RGBWeight << std::endl;
   
@@ -101,7 +106,8 @@ void ImageGraphCut::CutGraph()
   delete this->Graph;
 }
 
-void ImageGraphCut::PerformSegmentation()
+template <typename TImage>
+void ImageGraphCut<TImage>::PerformSegmentation()
 {
   // This function performs some initializations and then creates and cuts the graph
 
@@ -143,7 +149,8 @@ void ImageGraphCut::PerformSegmentation()
   this->CutGraph();
 }
 
-void ImageGraphCut::CreateSamples()
+template <typename TImage>
+void ImageGraphCut<TImage>::CreateSamples()
 {
   // This function creates ITK samples from the scribbled pixels and then computes the foreground and background histograms
 
@@ -158,7 +165,7 @@ void ImageGraphCut::CreateSamples()
 
   // Setup the histogram size
   std::cout << "Image components per pixel: " << this->Image->GetNumberOfComponentsPerPixel() << std::endl;
-  SampleToHistogramFilterType::HistogramSizeType histogramSize(this->Image->GetNumberOfComponentsPerPixel());
+  typename SampleToHistogramFilterType::HistogramSizeType histogramSize(this->Image->GetNumberOfComponentsPerPixel());
   histogramSize.Fill(this->NumberOfHistogramBins);
 
   // Create foreground samples and histogram
@@ -202,7 +209,8 @@ void ImageGraphCut::CreateSamples()
 
 }
 
-void ImageGraphCut::CreateGraph()
+template <typename TImage>
+void ImageGraphCut<TImage>::CreateGraph()
 {
   // Form the graph
   this->Graph = new GraphType;
@@ -226,17 +234,17 @@ void ImageGraphCut::CreateGraph()
   itk::Size<2> radius;
   radius.Fill(1);
 
-  typedef itk::ShapedNeighborhoodIterator<ImageType> IteratorType;
+  typedef itk::ShapedNeighborhoodIterator<TImage> IteratorType;
 
   // Traverse the image adding an edge between the current pixel and the pixel below it and the current pixel and the pixel to the right of it.
   // This prevents duplicate edges (i.e. we cannot add an edge to all 4-connected neighbors of every pixel or almost every edge would be duplicated.
-  std::vector<IteratorType::OffsetType> neighbors;
-  IteratorType::OffsetType bottom = {{0,1}};
+  std::vector<typename IteratorType::OffsetType> neighbors;
+  typename IteratorType::OffsetType bottom = {{0,1}};
   neighbors.push_back(bottom);
-  IteratorType::OffsetType right = {{1,0}};
+  typename IteratorType::OffsetType right = {{1,0}};
   neighbors.push_back(right);
 
-  IteratorType::OffsetType center = {{0,0}};
+  typename IteratorType::OffsetType center = {{0,0}};
 
   IteratorType iterator(radius, this->Image, this->Image->GetLargestPossibleRegion());
   iterator.ClearActiveList();
@@ -279,7 +287,7 @@ void ImageGraphCut::CreateGraph()
   // Compute the histograms of the selected foreground and background pixels
   CreateSamples();
 
-  itk::ImageRegionIterator<ImageType> imageIterator(this->Image, this->Image->GetLargestPossibleRegion());
+  itk::ImageRegionIterator<TImage> imageIterator(this->Image, this->Image->GetLargestPossibleRegion());
   itk::ImageRegionIterator<NodeImageType> nodeIterator(this->NodeImage, this->NodeImage->GetLargestPossibleRegion());
   imageIterator.GoToBegin();
   nodeIterator.GoToBegin();
@@ -342,7 +350,8 @@ void ImageGraphCut::CreateGraph()
     }
 }
 
-float ImageGraphCut::PixelDifference(const PixelType& a, const PixelType& b)
+template <typename TImage>
+float ImageGraphCut<TImage>::PixelDifference(const PixelType& a, const PixelType& b)
 {
   // Compute the Euclidean distance between N dimensional pixels
   float difference = 0;
@@ -368,7 +377,8 @@ float ImageGraphCut::PixelDifference(const PixelType& a, const PixelType& b)
   return sqrt(difference);
 }
 
-double ImageGraphCut::ComputeNoise()
+template <typename TImage>
+double ImageGraphCut<TImage>::ComputeNoise()
 {
   // Compute an estimate of the "camera noise". This is used in the N-weight function.
 
@@ -377,15 +387,15 @@ double ImageGraphCut::ComputeNoise()
   radius[0] = 1;
   radius[1] = 1;
 
-  typedef itk::ShapedNeighborhoodIterator<ImageType> IteratorType;
+  typedef itk::ShapedNeighborhoodIterator<TImage> IteratorType;
 
-  std::vector<IteratorType::OffsetType> neighbors;
-  IteratorType::OffsetType bottom = {{0,1}};
+  std::vector<typename IteratorType::OffsetType> neighbors;
+  typename IteratorType::OffsetType bottom = {{0,1}};
   neighbors.push_back(bottom);
-  IteratorType::OffsetType right = {{1,0}};
+  typename IteratorType::OffsetType right = {{1,0}};
   neighbors.push_back(right);
 
-  IteratorType::OffsetType center = {{0,0}};
+  typename IteratorType::OffsetType center = {{0,0}};
 
   IteratorType iterator(radius, this->Image, this->Image->GetLargestPossibleRegion());
   iterator.ClearActiveList();
@@ -424,47 +434,58 @@ double ImageGraphCut::ComputeNoise()
   return sigma;
 }
 
-ImageGraphCut::IndexContainer ImageGraphCut::GetSources()
+template <typename TImage>
+typename ImageGraphCut<TImage>::IndexContainer ImageGraphCut<TImage>::GetSources()
 {
   return this->Sources;
 }
 
-void ImageGraphCut::SetLambda(const float lambda)
+template <typename TImage>
+void ImageGraphCut<TImage>::SetLambda(const float lambda)
 {
   this->Lambda = lambda;
 }
 
-void ImageGraphCut::SetNumberOfHistogramBins(int bins)
+template <typename TImage>
+void ImageGraphCut<TImage>::SetNumberOfHistogramBins(int bins)
 {
   this->NumberOfHistogramBins = bins;
 }
 
-Mask* ImageGraphCut::GetSegmentMask()
+template <typename TImage>
+Mask* ImageGraphCut<TImage>::GetSegmentMask()
 {
   return this->SegmentMask;
 }
 
-ImageGraphCut::IndexContainer ImageGraphCut::GetSinks()
+template <typename TImage>
+typename ImageGraphCut<TImage>::IndexContainer ImageGraphCut<TImage>::GetSinks()
 {
   return this->Sinks;
 }
 
-bool ImageGraphCut::IsNaN(const double a)
+template <typename TImage>
+bool ImageGraphCut<TImage>::IsNaN(const double a)
 {
   return a != a;
 }
 
-void ImageGraphCut::SetSources(const IndexContainer& sources)
+template <typename TImage>
+void ImageGraphCut<TImage>::SetSources(const IndexContainer& sources)
 {
   this->Sources = sources;
 }
 
-void ImageGraphCut::SetSinks(const IndexContainer& sinks)
+template <typename TImage>
+void ImageGraphCut<TImage>::SetSinks(const IndexContainer& sinks)
 {
   this->Sinks = sinks;
 }
 
-ImageType* ImageGraphCut::GetImage()
+template <typename TImage>
+TImage* ImageGraphCut<TImage>::GetImage()
 {
   return this->Image;
 }
+
+#endif

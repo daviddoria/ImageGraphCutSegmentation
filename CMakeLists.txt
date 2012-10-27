@@ -31,10 +31,8 @@ set(ImageGraphCutSegmentation_include_dirs ${ImageGraphCutSegmentation_include_d
 get_property(MaskLibs GLOBAL PROPERTY MaskLibs)
 set(ImageGraphCutSegmentation_libraries ${ImageGraphCutSegmentation_libraries} ${MaskLibs})
 
-# Create graph library
-add_library(ImageGraphCut ImageGraphCut.cxx)
-target_link_libraries(ImageGraphCut KolmogorovMaxFlow)
-set(ImageGraphCutSegmentation_libraries ${ImageGraphCutSegmentation_libraries} ImageGraphCut) # Add the library to the list of libraries used
+# Add the library to the list of libraries used
+set(ImageGraphCutSegmentation_libraries ${ImageGraphCutSegmentation_libraries} KolmogorovMaxFlow)
 
 # Allow this project to be detected and used as a submodule
 set(ImageGraphCutSegmentation_include_dirs ${ImageGraphCutSegmentation_include_dirs} ${CMAKE_CURRENT_SOURCE_DIR})
