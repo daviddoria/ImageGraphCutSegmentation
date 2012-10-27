@@ -18,6 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef ImageGraphCut_H
 #define ImageGraphCut_H
 
+// Custom
+#include "PixelDifference.h"
+
+// Submodules
 #include "Mask/Mask.h"
 
 // ITK
@@ -33,10 +37,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "Kolmogorov/graph.h"
 typedef Graph GraphType;
 
-template <typename TImage>
+template <typename TImage, typename TPixelDifferenceFunctor = RGBPixelDifference<typename TImage::PixelType> >
 class ImageGraphCut
 {
 public:
+
+  ImageGraphCut(){}
+
+  ImageGraphCut(TPixelDifferenceFunctor pixelDifferenceFunctor) :
+    PixelDifferenceFunctor(pixelDifferenceFunctor){}
+
+  TPixelDifferenceFunctor PixelDifferenceFunctor = TPixelDifferenceFunctor();
 
   /** This is a special type to keep track of the graph node labels. */
   typedef itk::Image<void*, 2> NodeImageType;
@@ -97,9 +108,6 @@ protected:
   /** An image which keeps tracks of the mapping between pixel index and graph node id */
   NodeImageType::Pointer NodeImage;
 
-  /** Determine if a number is NaN */
-  bool IsNaN(const double a);
-
   /** The relative weight of the RGB channels (assumed to be the first 3 channels) if the image has more than 3 channels. */
   float RGBWeight;
 
@@ -119,9 +127,6 @@ protected:
 
   /** Perform the s-t min cut */
   void CutGraph();
-
-  /** Compute the difference between two pixels. */
-  float PixelDifference(const PixelType& a, const PixelType& b);
 
   /** The ITK data structure for storing the values that we will compute the histogram of. */
   typename SampleType::Pointer ForegroundSample;

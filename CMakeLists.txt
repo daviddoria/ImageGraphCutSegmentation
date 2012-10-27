@@ -44,6 +44,10 @@ set_property(GLOBAL PROPERTY ImageGraphCutSegmentationLibs ${ImageGraphCutSegmen
 # Give the compiler all of the required include directories
 include_directories(${ImageGraphCutSegmentation_include_dirs})
 
+# Make the h/hpp files appear in a QtCreator project
+add_custom_target(ImageGraphCut SOURCES
+ImageGraphCut.h ImageGraphCut.hpp PixelDifference.h)
+
 option(ImageGraphCutSegmentation_BuildExamples "Build ImageGraphCutSegmentation examples?")
 if(ImageGraphCutSegmentation_BuildExamples)
   add_subdirectory(Examples)

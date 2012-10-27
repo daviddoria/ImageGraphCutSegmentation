@@ -32,8 +32,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // STL
 #include <cmath>
 
-template <typename TImage>
-void ImageGraphCut<TImage>::SetImage(TImage* const image)
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetImage(TImage* const image)
 {
   this->Image = TImage::New();
   //this->Image->Graft(image);
@@ -68,8 +68,8 @@ void ImageGraphCut<TImage>::SetImage(TImage* const image)
 
 }
 
-template <typename TImage>
-void ImageGraphCut<TImage>::CutGraph()
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
 {
   std::cout << "RGBWeight: " << RGBWeight << std::endl;
   
@@ -106,8 +106,8 @@ void ImageGraphCut<TImage>::CutGraph()
   delete this->Graph;
 }
 
-template <typename TImage>
-void ImageGraphCut<TImage>::PerformSegmentation()
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::PerformSegmentation()
 {
   // This function performs some initializations and then creates and cuts the graph
 
@@ -149,8 +149,8 @@ void ImageGraphCut<TImage>::PerformSegmentation()
   this->CutGraph();
 }
 
-template <typename TImage>
-void ImageGraphCut<TImage>::CreateSamples()
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
 {
   // This function creates ITK samples from the scribbled pixels and then computes the foreground and background histograms
 
@@ -209,8 +209,8 @@ void ImageGraphCut<TImage>::CreateSamples()
 
 }
 
-template <typename TImage>
-void ImageGraphCut<TImage>::CreateGraph()
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateGraph()
 {
   // Form the graph
   this->Graph = new GraphType;
@@ -269,7 +269,7 @@ void ImageGraphCut<TImage>::CreateGraph()
       PixelType neighborPixel = iterator.GetPixel(neighbors[i]);
 
       // Compute the Euclidean distance between the pixel intensities
-      float pixelDifference = PixelDifference(centerPixel, neighborPixel);
+      float pixelDifference = PixelDifferenceFunctor.Difference(centerPixel, neighborPixel);
 
       // Compute the edge weight
       float weight = exp(-pow(pixelDifference,2)/(2.0*sigma*sigma));
@@ -350,35 +350,8 @@ void ImageGraphCut<TImage>::CreateGraph()
     }
 }
 
-template <typename TImage>
-float ImageGraphCut<TImage>::PixelDifference(const PixelType& a, const PixelType& b)
-{
-  // Compute the Euclidean distance between N dimensional pixels
-  float difference = 0;
-
-  if(this->Image->GetNumberOfComponentsPerPixel() > 3)
-    {
-    for(unsigned int i = 0; i < 3; i++)
-      {
-      difference += (this->RGBWeight / 3.) * pow(a[i] - b[i],2);
-      }
-    for(unsigned int i = 3; i < this->Image->GetNumberOfComponentsPerPixel(); i++)
-      {
-      difference += (1 - this->RGBWeight) / (this->Image->GetNumberOfComponentsPerPixel() - 3.) * pow(a[i] - b[i],2);
-      }
-    }
-  else // image is RGB or less (grayscale)
-    {
-    for(unsigned int i = 0; i < this->Image->GetNumberOfComponentsPerPixel(); i++)
-      {
-      difference += pow(a[i] - b[i],2);
-      }
-    }
-  return sqrt(difference);
-}
-
-template <typename TImage>
-double ImageGraphCut<TImage>::ComputeNoise()
+template <typename TImage, typename TPixelDifferenceFunctor>
+double ImageGraphCut<TImage, TPixelDifferenceFunctor>::ComputeNoise()
 {
   // Compute an estimate of the "camera noise". This is used in the N-weight function.
 
@@ -421,7 +394,7 @@ double ImageGraphCut<TImage>::ComputeNoise()
         }
       PixelType neighborPixel = iterator.GetPixel(neighbors[i]);
 
-      float colorDifference = PixelDifference(centerPixel, neighborPixel);
+      float colorDifference = PixelDifferenceFunctor.Difference(centerPixel, neighborPixel);
       sigma += colorDifference;
       numberOfEdges++;
       }
@@ -434,56 +407,50 @@ double ImageGraphCut<TImage>::ComputeNoise()
   return sigma;
 }
 
-template <typename TImage>
-typename ImageGraphCut<TImage>::IndexContainer ImageGraphCut<TImage>::GetSources()
+template <typename TImage, typename TPixelDifferenceFunctor>
+typename ImageGraphCut<TImage, TPixelDifferenceFunctor>::IndexContainer ImageGraphCut<TImage, TPixelDifferenceFunctor>::GetSources()
 {
   return this->Sources;
 }
 
-template <typename TImage>
-void ImageGraphCut<TImage>::SetLambda(const float lambda)
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetLambda(const float lambda)
 {
   this->Lambda = lambda;
 }
 
-template <typename TImage>
-void ImageGraphCut<TImage>::SetNumberOfHistogramBins(int bins)
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetNumberOfHistogramBins(int bins)
 {
   this->NumberOfHistogramBins = bins;
 }
 
-template <typename TImage>
-Mask* ImageGraphCut<TImage>::GetSegmentMask()
+template <typename TImage, typename TPixelDifferenceFunctor>
+Mask* ImageGraphCut<TImage, TPixelDifferenceFunctor>::GetSegmentMask()
 {
   return this->SegmentMask;
 }
 
-template <typename TImage>
-typename ImageGraphCut<TImage>::IndexContainer ImageGraphCut<TImage>::GetSinks()
+template <typename TImage, typename TPixelDifferenceFunctor>
+typename ImageGraphCut<TImage, TPixelDifferenceFunctor>::IndexContainer ImageGraphCut<TImage, TPixelDifferenceFunctor>::GetSinks()
 {
   return this->Sinks;
 }
 
-template <typename TImage>
-bool ImageGraphCut<TImage>::IsNaN(const double a)
-{
-  return a != a;
-}
-
-template <typename TImage>
-void ImageGraphCut<TImage>::SetSources(const IndexContainer& sources)
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetSources(const IndexContainer& sources)
 {
   this->Sources = sources;
 }
 
-template <typename TImage>
-void ImageGraphCut<TImage>::SetSinks(const IndexContainer& sinks)
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetSinks(const IndexContainer& sinks)
 {
   this->Sinks = sinks;
 }
 
-template <typename TImage>
-TImage* ImageGraphCut<TImage>::GetImage()
+template <typename TImage, typename TPixelDifferenceFunctor>
+TImage* ImageGraphCut<TImage, TPixelDifferenceFunctor>::GetImage()
 {
   return this->Image;
 }
