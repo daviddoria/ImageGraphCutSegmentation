@@ -29,19 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // STL
 #include <cmath>
 
-// VTK
-#include <vtkImageData.h>
-#include <vtkMath.h>
-#include <vtkPolyData.h>
-#include <vtkPointData.h>
-#include <vtkFloatArray.h>
-
-// Qt
-#include <QMessageBox>
-
 void ImageGraphCut::SetImage(ImageType* const image)
 {
-
   this->Image = ImageType::New();
   //this->Image->Graft(image);
   ITKHelpers::DeepCopy(image, this->Image.GetPointer());
@@ -463,52 +452,6 @@ ImageGraphCut::IndexContainer ImageGraphCut::GetSinks()
 bool ImageGraphCut::IsNaN(const double a)
 {
   return a != a;
-}
-
-void ImageGraphCut::SetSources(vtkPolyData* const sources)
-{
-  // Convert the vtkPolyData produced by the vtkImageTracerWidget to a list of pixel indices
-
-  this->Sources.clear();
-
-  for(vtkIdType i = 0; i < sources->GetNumberOfPoints(); i++)
-    {
-    itk::Index<2> index;
-    double p[3];
-    sources->GetPoint(i,p);
-    /*
-    index[0] = round(p[0]);
-    index[1] = round(p[1]);
-    */
-    index[0] = vtkMath::Round(p[0]);
-    index[1] = vtkMath::Round(p[1]);
-
-    this->Sources.push_back(index);
-    }
-
-}
-
-void ImageGraphCut::SetSinks(vtkPolyData* const sinks)
-{
-  // Convert the vtkPolyData produced by the vtkImageTracerWidget to a list of pixel indices
-
-  this->Sinks.clear();
-
-  for(vtkIdType i = 0; i < sinks->GetNumberOfPoints(); i++)
-    {
-    itk::Index<2> index;
-    double p[3];
-    sinks->GetPoint(i,p);
-    /*
-    index[0] = round(p[0]);
-    index[1] = round(p[1]);
-    */
-    index[0] = vtkMath::Round(p[0]);
-    index[1] = vtkMath::Round(p[1]);
-
-    this->Sinks.push_back(index);
-    }
-
 }
 
 void ImageGraphCut::SetSources(const IndexContainer& sources)

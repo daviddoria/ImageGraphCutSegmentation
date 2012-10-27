@@ -18,10 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef IMAGEGRAPHCUT_H
 #define IMAGEGRAPHCUT_H
 
-// VTK
-#include <vtkSmartPointer.h>
-class vtkPolyData;
-
 #include "Mask/Mask.h"
 
 // ITK
@@ -37,7 +33,7 @@ class vtkPolyData;
 #include "Types.h"
 
 // Kolmogorov's code
-#include "ImageGraphCutSegmentation/Kolmogorov/graph.h"
+#include "Kolmogorov/graph.h"
 typedef Graph GraphType;
 
 class ImageGraphCut
@@ -66,10 +62,6 @@ public:
   /** Return a list of the selected (via scribbling) pixels. */
   IndexContainer GetSources();
   IndexContainer GetSinks();
-
-  /** Set the selected pixels. */
-  void SetSources(vtkPolyData* const sources);
-  void SetSinks(vtkPolyData* const sinks);
 
   /** Set the selected pixels. */
   void SetSources(const IndexContainer& sources);
