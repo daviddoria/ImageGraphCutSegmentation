@@ -12,14 +12,14 @@
 
 int main(int argc, char*argv[])
 {
-  typedef itk::VectorImage<float, 2> ImageType;
-
+  // Verify arguments
   if(argc != 5)
     {
     std::cerr << "Required: image foregroundMask backgroundMask output" << std::endl;
     return EXIT_FAILURE;
     }
 
+  // Parse arguments
   std::string imageFilename = argv[1];
 
   // This image should have white pixels indicating foreground pixels and be black elsewhere.
@@ -30,25 +30,29 @@ int main(int argc, char*argv[])
 
   std::string outputFilename = argv[4]; // Foreground/background segment mask
 
+  // Output arguments
+  std::cout << "imageFilename: " << imageFilename << std::endl
+            << "foregroundFilename: " << foregroundFilename << std::endl
+            << "backgroundFilename: " << backgroundFilename << std::endl
+            << "outputFilename: " << outputFilename << std::endl;
+
+  // The type of the image to segment
+  typedef itk::VectorImage<float, 2> ImageType;
+
+  // Read the image
   typedef itk::ImageFileReader<ImageType> ReaderType;
   ReaderType::Pointer reader = ReaderType::New();
   reader->SetFileName(imageFilename);
   reader->Update();
 
-//   typedef itk::ImageFileReader<UnsignedCharScalarImageType> UnsignedCharReaderType;
-//   UnsignedCharReaderType::Pointer foregroundReader = UnsignedCharReaderType::New();
-//   foregroundReader->SetFileName(foregroundFilename);
-//   foregroundReader->Update();
+  // Read the foreground and background stroke images
   Mask::Pointer foregroundMask = Mask::New();
   foregroundMask->Read(foregroundFilename);
-
-//   UnsignedCharReaderType::Pointer backgroundReader = UnsignedCharReaderType::New();
-//   backgroundReader->SetFileName(backgroundFilename);
-//   backgroundReader->Update();
 
   Mask::Pointer backgroundMask = Mask::New();
   backgroundMask->Read(backgroundFilename);
   
+  // Perform the cut
   ImageGraphCut GraphCut;
   GraphCut.SetImage(reader->GetOutput());
   GraphCut.SetNumberOfHistogramBins(20);
@@ -59,11 +63,8 @@ int main(int argc, char*argv[])
   GraphCut.SetSinks(backgroundPixels);
   GraphCut.PerformSegmentation();
 
+  // Get and write the result
   Mask* result = GraphCut.GetSegmentMask();
 
-  typedef  itk::ImageFileWriter<Mask> WriterType;
-  WriterType::Pointer writer = WriterType::New();
-  writer->SetFileName(outputFilename);
-  writer->SetInput(result);
-  writer->Update();
+  ITKHelpers::WriteImage(result, outputFilename);
 }
