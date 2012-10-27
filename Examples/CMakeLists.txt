@@ -1,0 +1,4 @@
+ADD_EXECUTABLE(ImageGraphCutSegmentationExample ImageGraphCutSegmentationExample.cpp)
+TARGET_LINK_LIBRARIES(ImageGraphCutSegmentationExample
+${ITK_LIBRARIES}
+${ImageGraphCutSegmentation_libraries})

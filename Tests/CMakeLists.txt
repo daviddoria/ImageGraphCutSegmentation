@@ -1,0 +1,4 @@
+ADD_EXECUTABLE(ImageGraphCutSegmentationTest ImageGraphCutSegmentationTest.cpp)
+TARGET_LINK_LIBRARIES(ImageGraphCutSegmentationTest
+${ITK_LIBRARIES}
+${ImageGraphCutSegmentation_libraries})

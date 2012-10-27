@@ -44,7 +44,13 @@ set_property(GLOBAL PROPERTY ImageGraphCutSegmentationLibs ${ImageGraphCutSegmen
 # Give the compiler all of the required include directories
 include_directories(${ImageGraphCutSegmentation_include_dirs})
 
-ADD_EXECUTABLE(NonInteractive NonInteractive.cpp)
-TARGET_LINK_LIBRARIES(NonInteractive
-${ITK_LIBRARIES}
-${ImageGraphCutSegmentation_libraries})
+option(ImageGraphCutSegmentation_BuildExamples "Build ImageGraphCutSegmentation examples?")
+if(ImageGraphCutSegmentation_BuildExamples)
+  add_subdirectory(Examples)
+endif()
+
+option(ImageGraphCutSegmentation_BuildTests "Build ImageGraphCutSegmentation tests?")
+if(ImageGraphCutSegmentation_BuildTests)
+  add_subdirectory(Tests)
+  add_subdirectory(Kolmogorov/Tests)
+endif()
