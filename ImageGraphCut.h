@@ -47,7 +47,7 @@ public:
   ImageGraphCut(TPixelDifferenceFunctor pixelDifferenceFunctor) :
     PixelDifferenceFunctor(pixelDifferenceFunctor){}
 
-  TPixelDifferenceFunctor PixelDifferenceFunctor = TPixelDifferenceFunctor();
+  TPixelDifferenceFunctor PixelDifferenceFunctor;
 
   /** This is a special type to keep track of the graph node labels. */
   typedef itk::Image<void*, 2> NodeImageType;

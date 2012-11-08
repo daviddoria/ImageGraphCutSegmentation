@@ -45,7 +45,8 @@ public:
 template <typename TPixel>
 class NDPixelDifference
 {
-  float RGBWeight = 1.0f;
+  //float RGBWeight = 1.0f; // Needs better c++11 support than is provided by VS2010
+  float RGBWeight;
 
 public:
   NDPixelDifference(const float rgbWeight) : RGBWeight(rgbWeight){}
