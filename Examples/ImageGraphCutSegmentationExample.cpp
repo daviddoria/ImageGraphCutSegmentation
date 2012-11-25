@@ -32,7 +32,7 @@ int main(int argc, char*argv[])
   // Verify arguments
   if(argc != 5)
     {
-    std::cerr << "Required: image foregroundMask backgroundMask output" << std::endl;
+    std::cerr << "Required: image.png foregroundMask.png backgroundMask.png output.png" << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -64,10 +64,10 @@ int main(int argc, char*argv[])
 
   // Read the foreground and background stroke images
   Mask::Pointer foregroundMask = Mask::New();
-  foregroundMask->Read(foregroundFilename);
+  foregroundMask->ReadFromImage(foregroundFilename);
 
   Mask::Pointer backgroundMask = Mask::New();
-  backgroundMask->Read(backgroundFilename);
+  backgroundMask->ReadFromImage(backgroundFilename);
   
   // Perform the cut
   ImageGraphCut<ImageType> GraphCut;
