@@ -108,9 +108,6 @@ protected:
   /** An image which keeps tracks of the mapping between pixel index and graph node id */
   NodeImageType::Pointer NodeImage;
 
-  /** The relative weight of the RGB channels (assumed to be the first 3 channels) if the image has more than 3 channels. */
-  float RGBWeight;
-
   // Typedefs
   typedef typename TImage::PixelType PixelType;
   typedef itk::Statistics::ListSample<PixelType> SampleType;

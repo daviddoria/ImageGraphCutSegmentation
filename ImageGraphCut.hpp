@@ -63,16 +63,11 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetImage(TImage* const imag
 
   this->ForegroundHistogramFilter = SampleToHistogramFilterType::New();
   this->BackgroundHistogramFilter = SampleToHistogramFilterType::New();
-
-  this->RGBWeight = 0.5; // This value is never used - it is set from the slider
-
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
 void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
 {
-  std::cout << "RGBWeight: " << RGBWeight << std::endl;
-  
   // Compute max-flow
   this->Graph->maxflow();
 
