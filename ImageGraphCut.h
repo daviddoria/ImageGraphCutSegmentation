@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "PixelDifference.h"
 
 // Submodules
-#include "Mask/Mask.h"
+#include "Mask/ForegroundBackgroundSegmentMask.h"
 
 // ITK
 #include "itkImage.h"
@@ -77,7 +77,7 @@ public:
   void SetSinks(const IndexContainer& sinks);
 
   /** Get the output of the segmentation. */
-  Mask* GetSegmentMask();
+  ForegroundBackgroundSegmentMask* GetSegmentMask();
 
   /** Set the weight between the regional and boundary terms. */
   void SetLambda(const float);
@@ -91,7 +91,7 @@ protected:
   GraphType* Graph;
 
   /** The output segmentation */
-  Mask::Pointer SegmentMask;
+  ForegroundBackgroundSegmentMask::Pointer ResultingSegments;
 
   /** User specified foreground points */
   IndexContainer Sources;
@@ -100,10 +100,10 @@ protected:
   IndexContainer Sinks;
 
   /** The weighting between unary and binary terms */
-  float Lambda;
+  float Lambda = 0.01f;
 
   /** The number of bins per dimension of the foreground and background histograms */
-  int NumberOfHistogramBins;
+  int NumberOfHistogramBins = 10;
 
   /** An image which keeps tracks of the mapping between pixel index and graph node id */
   NodeImageType::Pointer NodeImage;
@@ -130,8 +130,8 @@ protected:
   typename SampleType::Pointer BackgroundSample;
 
   /** The histograms. */
-  const HistogramType* ForegroundHistogram;
-  const HistogramType* BackgroundHistogram;
+  const HistogramType* ForegroundHistogram = nullptr;
+  const HistogramType* BackgroundHistogram = nullptr;
 
   /** ITK filters to create histograms. */
   typename SampleToHistogramFilterType::Pointer ForegroundHistogramFilter;

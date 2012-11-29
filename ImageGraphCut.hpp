@@ -36,28 +36,19 @@ template <typename TImage, typename TPixelDifferenceFunctor>
 void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetImage(TImage* const image)
 {
   this->Image = TImage::New();
-  //this->Image->Graft(image);
   ITKHelpers::DeepCopy(image, this->Image.GetPointer());
 
   // Setup the output (mask) image
-  //this->SegmentMask = GrayscaleImageType::New();
-  this->SegmentMask = Mask::New();
-  this->SegmentMask->SetRegions(this->Image->GetLargestPossibleRegion());
-  this->SegmentMask->Allocate();
+  this->ResultingSegments = ForegroundBackgroundSegmentMask::New();
+  this->ResultingSegments->SetRegions(this->Image->GetLargestPossibleRegion());
+  this->ResultingSegments->Allocate();
 
   // Setup the image to store the node ids
   this->NodeImage = NodeImageType::New();
   this->NodeImage->SetRegions(this->Image->GetLargestPossibleRegion());
   this->NodeImage->Allocate();
 
-  // Default paramters
-  this->Lambda = 0.01;
-  this->NumberOfHistogramBins = 10; // This value is never used - it is set from the slider
-
   // Initializations
-  this->ForegroundHistogram = NULL;
-  this->BackgroundHistogram = NULL;
-
   this->ForegroundSample = SampleType::New();
   this->BackgroundSample = SampleType::New();
 
@@ -71,32 +62,23 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
   // Compute max-flow
   this->Graph->maxflow();
 
-  // Setup the values of the output (mask) image
-  //GrayscalePixelType sinkPixel;
-  //sinkPixel[0] = 0;
-  Mask::PixelType sinkPixel = 0;
-
-  //GrayscalePixelType sourcePixel;
-  //sourcePixel[0] = 255;
-  Mask::PixelType sourcePixel = 255;
-
   // Iterate over the node image, querying the Kolmorogov graph object for the association of each pixel and storing them as the output mask
-  itk::ImageRegionConstIterator<NodeImageType> nodeImageIterator(this->NodeImage,
-                                                                 this->NodeImage->GetLargestPossibleRegion());
+  itk::ImageRegionConstIterator<NodeImageType>
+      nodeImageIterator(this->NodeImage, this->NodeImage->GetLargestPossibleRegion());
   nodeImageIterator.GoToBegin();
 
   while(!nodeImageIterator.IsAtEnd())
-    {
+  {
     if(this->Graph->what_segment(nodeImageIterator.Get()) == GraphType::SOURCE)
-      {
-      this->SegmentMask->SetPixel(nodeImageIterator.GetIndex(), sourcePixel);
-      }
-    else if(this->Graph->what_segment(nodeImageIterator.Get()) == GraphType::SINK)
-      {
-      this->SegmentMask->SetPixel(nodeImageIterator.GetIndex(), sinkPixel);
-      }
-    ++nodeImageIterator;
+    {
+      this->ResultingSegments->SetPixel(nodeImageIterator.GetIndex(), ForegroundBackgroundSegmentMaskPixelTypeEnum::FOREGROUND);
     }
+    else if(this->Graph->what_segment(nodeImageIterator.Get()) == GraphType::SINK)
+    {
+      this->ResultingSegments->SetPixel(nodeImageIterator.GetIndex(), ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
+    }
+    ++nodeImageIterator;
+  }
 
   delete this->Graph;
 }
@@ -108,37 +90,24 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::PerformSegmentation()
 
   // Ensure at least one pixel has been specified for both the foreground and background
   if((this->Sources.size() <= 0) || (this->Sinks.size() <= 0))
-    {
+  {
     std::cerr << "At least one source (foreground) pixel and one sink (background) pixel must be specified!" << std::endl;
     std::cerr << "Currently there are " << this->Sources.size() << " and " << this->Sinks.size() << " sinks." << std::endl;
     return;
-    }
+  }
 
   // Blank the NodeImage
   itk::ImageRegionIterator<NodeImageType> nodeImageIterator(this->NodeImage, this->NodeImage->GetLargestPossibleRegion());
   nodeImageIterator.GoToBegin();
 
   while(!nodeImageIterator.IsAtEnd())
-    {
-    nodeImageIterator.Set(NULL);
+  {
+    nodeImageIterator.Set(nullptr);
     ++nodeImageIterator;
-    }
+  }
 
   // Blank the output image
-  //itk::ImageRegionIterator<GrayscaleImageType> segmentMaskImageIterator(this->SegmentMask,
-  //                                             this->SegmentMask->GetLargestPossibleRegion());
-  itk::ImageRegionIterator<Mask> segmentMaskImageIterator(this->SegmentMask,
-                                                                   this->SegmentMask->GetLargestPossibleRegion());
-  segmentMaskImageIterator.GoToBegin();
-
-  Mask::PixelType empty = 0;
-  //empty[0] = 0;
-
-  while(!segmentMaskImageIterator.IsAtEnd())
-    {
-    segmentMaskImageIterator.Set(empty);
-    ++segmentMaskImageIterator;
-    }
+  ITKHelpers::SetImageToConstant(this->ResultingSegments.GetPointer(), ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
 
   this->CreateGraph();
   this->CutGraph();
@@ -153,10 +122,10 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
   HistogramType::MeasurementVectorType binMinimum(this->Image->GetNumberOfComponentsPerPixel());
   HistogramType::MeasurementVectorType binMaximum(this->Image->GetNumberOfComponentsPerPixel());
   for(unsigned int i = 0; i < this->Image->GetNumberOfComponentsPerPixel(); i++)
-    {
+  {
     binMinimum[i] = 0;
     binMaximum[i] = 255;
-    }
+  }
 
   // Setup the histogram size
   std::cout << "Image components per pixel: " << this->Image->GetNumberOfComponentsPerPixel() << std::endl;
@@ -421,9 +390,9 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetNumberOfHistogramBins(in
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
-Mask* ImageGraphCut<TImage, TPixelDifferenceFunctor>::GetSegmentMask()
+ForegroundBackgroundSegmentMask* ImageGraphCut<TImage, TPixelDifferenceFunctor>::GetSegmentMask()
 {
-  return this->SegmentMask;
+  return this->ResultingSegments;
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>

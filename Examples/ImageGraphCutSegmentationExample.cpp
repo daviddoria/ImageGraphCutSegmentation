@@ -63,25 +63,31 @@ int main(int argc, char*argv[])
   reader->Update();
 
   // Read the foreground and background stroke images
-  Mask::Pointer foregroundMask = Mask::New();
-  foregroundMask->ReadFromImage(foregroundFilename);
+  ForegroundBackgroundSegmentMask::Pointer foregroundMask =
+      ForegroundBackgroundSegmentMask::New();
+  foregroundMask->ReadFromImage(foregroundFilename, ForegroundPixelValueWrapper<int>(0),
+                                BackgroundPixelValueWrapper<int>(255));
 
-  Mask::Pointer backgroundMask = Mask::New();
-  backgroundMask->ReadFromImage(backgroundFilename);
+  ForegroundBackgroundSegmentMask::Pointer backgroundMask =
+      ForegroundBackgroundSegmentMask::New();
+  backgroundMask->ReadFromImage(backgroundFilename, ForegroundPixelValueWrapper<int>(0),
+                                BackgroundPixelValueWrapper<int>(255));
   
   // Perform the cut
   ImageGraphCut<ImageType> GraphCut;
   GraphCut.SetImage(reader->GetOutput());
   GraphCut.SetNumberOfHistogramBins(20);
   GraphCut.SetLambda(.01);
-  std::vector<itk::Index<2> > foregroundPixels = ITKHelpers::GetNonZeroPixels(foregroundMask.GetPointer());
-  std::vector<itk::Index<2> > backgroundPixels = ITKHelpers::GetNonZeroPixels(backgroundMask.GetPointer());
+  std::vector<itk::Index<2> > foregroundPixels =
+      ITKHelpers::GetPixelsWithValue(foregroundMask.GetPointer(), ForegroundBackgroundSegmentMaskPixelTypeEnum::FOREGROUND);
+  std::vector<itk::Index<2> > backgroundPixels =
+      ITKHelpers::GetPixelsWithValue(backgroundMask.GetPointer(), ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
   GraphCut.SetSources(foregroundPixels);
   GraphCut.SetSinks(backgroundPixels);
   GraphCut.PerformSegmentation();
 
   // Get and write the result
-  Mask* result = GraphCut.GetSegmentMask();
+  ForegroundBackgroundSegmentMask* result = GraphCut.GetSegmentMask();
 
   ITKHelpers::WriteImage(result, outputFilename);
 }
