@@ -27,6 +27,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "itkImageRegionConstIteratorWithIndex.h"
 #include "itkVectorImage.h"
 
+/** This example segments an image and writes the segmentation mask to a file.
+  * It can operate on image with an number of components per dimension (i.e.
+  * RGB, RGBD, grayscale, etc.). NOTE: If your image has channels that should not
+  * be used by the segmentation algorithm, you must remove them before calling this
+  * example. That is, if you have an RGBA image (4th channel is an alpha channel)
+  * but you only want to segment the RGB image, you must remove the alpha channel
+  * or you will get strange results (the full image may be the resulting segmentation).
+  */
 int main(int argc, char*argv[])
 {
   // Verify arguments
@@ -62,11 +70,14 @@ int main(int argc, char*argv[])
   reader->SetFileName(imageFilename);
   reader->Update();
 
+  std::cout << "Read image with " << this->Image->GetNumberOfComponentsPerPixel()
+            << " components per pixel." << std::endl;
+
   // Read the foreground and background stroke images
   ForegroundBackgroundSegmentMask::Pointer foregroundMask =
       ForegroundBackgroundSegmentMask::New();
-  foregroundMask->ReadFromImage(foregroundFilename, ForegroundPixelValueWrapper<int>(0),
-                                BackgroundPixelValueWrapper<int>(255));
+  foregroundMask->ReadFromImage(foregroundFilename, ForegroundPixelValueWrapper<int>(255),
+                                BackgroundPixelValueWrapper<int>(0));
 
   ForegroundBackgroundSegmentMask::Pointer backgroundMask =
       ForegroundBackgroundSegmentMask::New();
@@ -89,5 +100,6 @@ int main(int argc, char*argv[])
   // Get and write the result
   ForegroundBackgroundSegmentMask* result = GraphCut.GetSegmentMask();
 
-  ITKHelpers::WriteImage(result, outputFilename);
+  result->Write<unsigned char>(outputFilename, ForegroundPixelValueWrapper<unsigned char>(0),
+                BackgroundPixelValueWrapper<unsigned char>(255));
 }
