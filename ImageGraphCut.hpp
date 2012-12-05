@@ -118,23 +118,26 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
 {
   // This function creates ITK samples from the scribbled pixels and then computes the foreground and background histograms
 
+  unsigned int numberOfComponentsPerPixel =
+      this->Image->GetNumberOfComponentsPerPixel();
+
   // We want the histogram bins to take values from 0 to 255 in all dimensions
-  HistogramType::MeasurementVectorType binMinimum(this->Image->GetNumberOfComponentsPerPixel());
-  HistogramType::MeasurementVectorType binMaximum(this->Image->GetNumberOfComponentsPerPixel());
-  for(unsigned int i = 0; i < this->Image->GetNumberOfComponentsPerPixel(); i++)
+  HistogramType::MeasurementVectorType binMinimum(numberOfComponentsPerPixel);
+  HistogramType::MeasurementVectorType binMaximum(numberOfComponentsPerPixel);
+  for(unsigned int i = 0; i < numberOfComponentsPerPixel; i++)
   {
     binMinimum[i] = 0;
     binMaximum[i] = 255;
   }
 
   // Setup the histogram size
-  std::cout << "Image components per pixel: " << this->Image->GetNumberOfComponentsPerPixel() << std::endl;
-  typename SampleToHistogramFilterType::HistogramSizeType histogramSize(this->Image->GetNumberOfComponentsPerPixel());
+  std::cout << "Image components per pixel: " << numberOfComponentsPerPixel << std::endl;
+  typename SampleToHistogramFilterType::HistogramSizeType histogramSize(numberOfComponentsPerPixel);
   histogramSize.Fill(this->NumberOfHistogramBins);
 
   // Create foreground samples and histogram
   this->ForegroundSample->Clear();
-  this->ForegroundSample->SetMeasurementVectorSize(this->Image->GetNumberOfComponentsPerPixel());
+  this->ForegroundSample->SetMeasurementVectorSize(numberOfComponentsPerPixel);
   //std::cout << "Measurement vector size: " << this->ForegroundSample->GetMeasurementVectorSize() << std::endl;
   //std::cout << "Pixel size: " << this->Image->GetPixel(this->Sources[0]).GetNumberOfElements() << std::endl;
   
@@ -155,7 +158,7 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
 
   // Create background samples and histogram
   this->BackgroundSample->Clear();
-  this->BackgroundSample->SetMeasurementVectorSize(this->Image->GetNumberOfComponentsPerPixel());
+  this->BackgroundSample->SetMeasurementVectorSize(numberOfComponentsPerPixel);
   for(unsigned int i = 0; i < this->Sinks.size(); i++)
     {
     this->BackgroundSample->PushBack(this->Image->GetPixel(this->Sinks[i]));
