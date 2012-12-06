@@ -37,6 +37,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "Kolmogorov/graph.h"
 typedef Graph GraphType;
 
+/** Perform graph cut based segmentation on an image. Image pixels can contain any
+  * number of components (i.e. grayscale, RGB, RGBA, RGBD, etc.).
+  */
 template <typename TImage, typename TPixelDifferenceFunctor = RGBPixelDifference<typename TImage::PixelType> >
 class ImageGraphCut
 {

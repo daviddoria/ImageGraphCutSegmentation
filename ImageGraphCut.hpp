@@ -91,13 +91,17 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::PerformSegmentation()
   // Ensure at least one pixel has been specified for both the foreground and background
   if((this->Sources.size() <= 0) || (this->Sinks.size() <= 0))
   {
-    std::cerr << "At least one source (foreground) pixel and one sink (background) pixel must be specified!" << std::endl;
-    std::cerr << "Currently there are " << this->Sources.size() << " and " << this->Sinks.size() << " sinks." << std::endl;
+    std::cerr << "At least one source (foreground) pixel and one sink (background) "
+                 "pixel must be specified!" << std::endl;
+    std::cerr << "Currently there are " << this->Sources.size()
+              << " and " << this->Sinks.size() << " sinks." << std::endl;
     return;
   }
 
   // Blank the NodeImage
-  itk::ImageRegionIterator<NodeImageType> nodeImageIterator(this->NodeImage, this->NodeImage->GetLargestPossibleRegion());
+  itk::ImageRegionIterator<NodeImageType>
+      nodeImageIterator(this->NodeImage,
+                        this->NodeImage->GetLargestPossibleRegion());
   nodeImageIterator.GoToBegin();
 
   while(!nodeImageIterator.IsAtEnd())
@@ -107,7 +111,8 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::PerformSegmentation()
   }
 
   // Blank the output image
-  ITKHelpers::SetImageToConstant(this->ResultingSegments.GetPointer(), ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
+  ITKHelpers::SetImageToConstant(this->ResultingSegments.GetPointer(),
+                                 ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
 
   this->CreateGraph();
   this->CutGraph();
@@ -126,13 +131,22 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
   HistogramType::MeasurementVectorType binMaximum(numberOfComponentsPerPixel);
   for(unsigned int i = 0; i < numberOfComponentsPerPixel; i++)
   {
-    binMinimum[i] = 0;
-    binMaximum[i] = 255;
+    // If one channel (often, the alpha channel) is all 255, for example, then however
+    // the ITK histogram constructs the bins with range (0,255) does not include the 255 pixels,
+    // and therefore none of the pixels are included in the histogram at all!
+    // Using slightly less than 0 (-.5) and slightly more than 255 (255.5) as the bin limits
+    // fixes this problem
+//    binMinimum[i] = 0;
+//    binMaximum[i] = 255;
+    binMinimum[i] = -0.5f;
+    binMaximum[i] = 255.5f;
   }
 
   // Setup the histogram size
-  std::cout << "Image components per pixel: " << numberOfComponentsPerPixel << std::endl;
-  typename SampleToHistogramFilterType::HistogramSizeType histogramSize(numberOfComponentsPerPixel);
+  std::cout << "Image components per pixel: "
+            << numberOfComponentsPerPixel << std::endl;
+  typename SampleToHistogramFilterType::HistogramSizeType
+      histogramSize(numberOfComponentsPerPixel);
   histogramSize.Fill(this->NumberOfHistogramBins);
 
   // Create foreground samples and histogram
@@ -142,9 +156,9 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
   //std::cout << "Pixel size: " << this->Image->GetPixel(this->Sources[0]).GetNumberOfElements() << std::endl;
   
   for(unsigned int i = 0; i < this->Sources.size(); i++)
-    {
+  {
     this->ForegroundSample->PushBack(this->Image->GetPixel(this->Sources[i]));
-    }
+  }
 
   this->ForegroundHistogramFilter->SetHistogramSize(histogramSize);
   this->ForegroundHistogramFilter->SetHistogramBinMinimum(binMinimum);
@@ -160,9 +174,9 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
   this->BackgroundSample->Clear();
   this->BackgroundSample->SetMeasurementVectorSize(numberOfComponentsPerPixel);
   for(unsigned int i = 0; i < this->Sinks.size(); i++)
-    {
+  {
     this->BackgroundSample->PushBack(this->Image->GetPixel(this->Sinks[i]));
-    }
+  }
 
   this->BackgroundHistogramFilter->SetHistogramSize(histogramSize);
   this->BackgroundHistogramFilter->SetHistogramBinMinimum(binMinimum);
@@ -195,16 +209,21 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateGraph()
   // Estimate the "camera noise"
   double sigma = this->ComputeNoise();
 
-  ////////// Create n-edges and set n-edge weights (links between image nodes) //////////
+  ////////// Create n-edges and set n-edge weights
+  ////////// (links between image nodes)
 
-  // We are only using a 4-connected structure, so the kernel (iteration neighborhood) must only be 3x3 (specified by a radius of 1)
+  // We are only using a 4-connected structure,
+  // so the kernel (iteration neighborhood) must only be
+  // 3x3 (specified by a radius of 1)
   itk::Size<2> radius;
   radius.Fill(1);
 
   typedef itk::ShapedNeighborhoodIterator<TImage> IteratorType;
 
-  // Traverse the image adding an edge between the current pixel and the pixel below it and the current pixel and the pixel to the right of it.
-  // This prevents duplicate edges (i.e. we cannot add an edge to all 4-connected neighbors of every pixel or almost every edge would be duplicated.
+  // Traverse the image adding an edge between the current pixel
+  // and the pixel below it and the current pixel and the pixel to the right of it.
+  // This prevents duplicate edges (i.e. we cannot add an edge to
+  // all 4-connected neighbors of every pixel or almost every edge would be duplicated.
   std::vector<typename IteratorType::OffsetType> neighbors;
   typename IteratorType::OffsetType bottom = {{0,1}};
   neighbors.push_back(bottom);
@@ -254,8 +273,12 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateGraph()
   // Compute the histograms of the selected foreground and background pixels
   CreateSamples();
 
-  itk::ImageRegionIterator<TImage> imageIterator(this->Image, this->Image->GetLargestPossibleRegion());
-  itk::ImageRegionIterator<NodeImageType> nodeIterator(this->NodeImage, this->NodeImage->GetLargestPossibleRegion());
+  itk::ImageRegionIterator<TImage>
+      imageIterator(this->Image,
+                    this->Image->GetLargestPossibleRegion());
+  itk::ImageRegionIterator<NodeImageType>
+      nodeIterator(this->NodeImage,
+                   this->NodeImage->GetLargestPossibleRegion());
   imageIterator.GoToBegin();
   nodeIterator.GoToBegin();
 
@@ -265,56 +288,69 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateGraph()
   float tinyValue = 1e-10;
 
   while(!imageIterator.IsAtEnd())
-    {
+  {
     PixelType pixel = imageIterator.Get();
     //std::cout << "Pixels have size: " << pixel.Size() << std::endl;
 
     HistogramType::MeasurementVectorType measurementVector(pixel.Size());
     for(unsigned int i = 0; i < pixel.Size(); i++)
-      {
+    {
       measurementVector[i] = pixel[i];
-      }
+    }
 
     HistogramType::IndexType backgroundIndex;
     this->BackgroundHistogram->GetIndex(measurementVector, backgroundIndex);
-    float sinkHistogramValue = this->BackgroundHistogram->GetFrequency(backgroundIndex);
+    float sinkHistogramValue =
+        this->BackgroundHistogram->GetFrequency(backgroundIndex);
 
     HistogramType::IndexType foregroundIndex;
     this->ForegroundHistogram->GetIndex(measurementVector, foregroundIndex);
-    float sourceHistogramValue = this->ForegroundHistogram->GetFrequency(foregroundIndex);
+    float sourceHistogramValue =
+        this->ForegroundHistogram->GetFrequency(foregroundIndex);
 
     // Conver the histogram value/frequency to make it as if it came from a normalized histogram
+    if(this->BackgroundHistogram->GetTotalFrequency() == 0 ||
+       this->ForegroundHistogram->GetTotalFrequency() == 0)
+    {
+      throw std::runtime_error("The foreground or background histogram TotalFrequency is 0!");
+    }
+
     sinkHistogramValue /= this->BackgroundHistogram->GetTotalFrequency();
     sourceHistogramValue /= this->ForegroundHistogram->GetTotalFrequency();
 
     if(sinkHistogramValue <= 0)
-      {
+    {
       sinkHistogramValue = tinyValue;
-      }
+    }
     if(sourceHistogramValue <= 0)
-      {
+    {
       sourceHistogramValue = tinyValue;
-      }
+    }
 
     // Add the edge to the graph and set its weight
+    // log() is the natural log
     this->Graph->add_tweights(nodeIterator.Get(),
                               -this->Lambda*log(sinkHistogramValue),
-                              -this->Lambda*log(sourceHistogramValue)); // log() is the natural log
+                              -this->Lambda*log(sourceHistogramValue));
     ++imageIterator;
     ++nodeIterator;
-    }
+  }
 
-  // Set very high source weights for the pixels which were selected as foreground by the user
+  // Set very high source weights for the pixels that were
+  // selected as foreground by the user
   for(unsigned int i = 0; i < this->Sources.size(); i++)
-    {
-    this->Graph->add_tweights(this->NodeImage->GetPixel(this->Sources[i]),this->Lambda * std::numeric_limits<float>::max(),0);
-    }
+  {
+    this->Graph->add_tweights(this->NodeImage->GetPixel(this->Sources[i]),
+                              this->Lambda * std::numeric_limits<float>::max(),0);
+  }
 
-  // Set very high sink weights for the pixels which were selected as background by the user
+  // Set very high sink weights for the pixels that
+  // were selected as background by the user
   for(unsigned int i = 0; i < this->Sinks.size(); i++)
-    {
-    this->Graph->add_tweights(this->NodeImage->GetPixel(this->Sinks[i]),0,this->Lambda * std::numeric_limits<float>::max());
-    }
+  {
+    this->Graph->add_tweights(this->NodeImage->GetPixel(this->Sinks[i]),
+                              0,this->Lambda * std::numeric_limits<float>::max());
+  }
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
