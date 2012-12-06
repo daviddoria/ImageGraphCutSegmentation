@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Submodules
 #include "Mask/ITKHelpers/Helpers/Helpers.h"
 #include "Mask/ITKHelpers/ITKHelpers.h"
+#include "Mask/StrokeMask.h"
 
 // ITK
 #include "itkImage.h"
@@ -34,25 +35,23 @@ int main(int argc, char*argv[])
   // Verify arguments
   if(argc != 5)
   {
-    std::cerr << "Required: image foregroundMask backgroundMask baseline" << std::endl;
+    std::cerr << "Required: image.png foreground.stroke background.stroke baseline.png" << std::endl;
     return EXIT_FAILURE;
   }
 
   // Parse arguments
   std::string imageFilename = argv[1];
 
-  // This image should have white pixels indicating foreground pixels and be black elsewhere.
-  std::string foregroundFilename = argv[2];
+  std::string foregroundStrokeFilename = argv[2];
 
-  // This image should have white pixels indicating background pixels and be black elsewhere.
-  std::string backgroundFilename = argv[3];
+  std::string backgroundStrokeFilename = argv[3];
 
-  std::string baselineFilename = argv[4]; // The image of the correct segmentation
+  std::string baselineFilename = argv[4];
 
   // Output arguments
   std::cout << "imageFilename: " << imageFilename << std::endl
-            << "foregroundFilename: " << foregroundFilename << std::endl
-            << "backgroundFilename: " << backgroundFilename << std::endl
+            << "foregroundStrokeFilename: " << foregroundStrokeFilename << std::endl
+            << "backgroundStrokeFilename: " << backgroundStrokeFilename << std::endl
             << "baselineFilename: " << baselineFilename << std::endl;
 
   // The type of the image to segment
@@ -65,15 +64,13 @@ int main(int argc, char*argv[])
   reader->Update();
 
   // Read the foreground and background stroke images
-  ForegroundBackgroundSegmentMask::Pointer foregroundMask =
-      ForegroundBackgroundSegmentMask::New();
-  foregroundMask->ReadFromImage(foregroundFilename, ForegroundPixelValueWrapper<int>(0),
-                                BackgroundPixelValueWrapper<int>(255));
+  StrokeMask::Pointer foregroundStrokeMask =
+      StrokeMask::New();
+  foregroundStrokeMask->Read(foregroundStrokeFilename);
 
-  ForegroundBackgroundSegmentMask::Pointer backgroundMask =
-      ForegroundBackgroundSegmentMask::New();
-  backgroundMask->ReadFromImage(backgroundFilename, ForegroundPixelValueWrapper<int>(0),
-                                BackgroundPixelValueWrapper<int>(255));
+  StrokeMask::Pointer backgroundStrokeMask =
+      StrokeMask::New();
+  backgroundStrokeMask->Read(backgroundStrokeFilename);
 
   // Perform the cut
   ImageGraphCut<ImageType> GraphCut;
@@ -81,9 +78,13 @@ int main(int argc, char*argv[])
   GraphCut.SetNumberOfHistogramBins(20);
   GraphCut.SetLambda(.01);
   std::vector<itk::Index<2> > foregroundPixels =
-      ITKHelpers::GetPixelsWithValue(foregroundMask.GetPointer(), ForegroundBackgroundSegmentMaskPixelTypeEnum::FOREGROUND);
+      ITKHelpers::GetPixelsWithValue(foregroundStrokeMask.GetPointer(), StrokeMaskPixelTypeEnum::STROKE);
+  std::cout << "There are " << foregroundPixels.size() << " foreground pixels." << std::endl;
+
   std::vector<itk::Index<2> > backgroundPixels =
-      ITKHelpers::GetPixelsWithValue(backgroundMask.GetPointer(), ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
+      ITKHelpers::GetPixelsWithValue(backgroundStrokeMask.GetPointer(), StrokeMaskPixelTypeEnum::STROKE);
+  std::cout << "There are " << backgroundPixels.size() << " background pixels." << std::endl;
+
   GraphCut.SetSources(foregroundPixels);
   GraphCut.SetSinks(backgroundPixels);
   GraphCut.PerformSegmentation();
@@ -96,8 +97,15 @@ int main(int argc, char*argv[])
       ForegroundBackgroundSegmentMask::New();
   baselineMask->Read(baselineFilename);
 
-  if(ITKHelpers::CountDifferentPixels(result, baselineMask.GetPointer()) > 0)
+  baselineMask->Write("BaselineReadWrite.png", ForegroundPixelValueWrapper<unsigned char>(255),
+                BackgroundPixelValueWrapper<unsigned char>(0));
+
+  unsigned int numberOfIncorrectPixels = ITKHelpers::CountDifferentPixels(result, baselineMask.GetPointer());
+  if(numberOfIncorrectPixels > 0)
   {
+    std::cerr << "There were " << numberOfIncorrectPixels << " incorrect pixels!" << std::endl;
+    result->Write("Incorrect.png", ForegroundPixelValueWrapper<unsigned char>(255),
+                  BackgroundPixelValueWrapper<unsigned char>(0));
     return EXIT_FAILURE;
   }
 
