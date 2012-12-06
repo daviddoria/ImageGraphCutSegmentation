@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Submodules
 #include "Mask/ITKHelpers/Helpers/Helpers.h"
 #include "Mask/ITKHelpers/ITKHelpers.h"
+#include "Mask/StrokeMask.h"
 
 #include "itkImage.h"
 #include "itkImageFileReader.h"
@@ -74,15 +75,13 @@ int main(int argc, char*argv[])
             << " components per pixel." << std::endl;
 
   // Read the foreground and background stroke images
-  ForegroundBackgroundSegmentMask::Pointer foregroundMask =
-      ForegroundBackgroundSegmentMask::New();
-  foregroundMask->ReadFromImage(foregroundFilename, ForegroundPixelValueWrapper<int>(255),
-                                BackgroundPixelValueWrapper<int>(0));
+  StrokeMask::Pointer foregroundStrokeMask =
+      StrokeMask::New();
+  foregroundStrokeMask->Read(foregroundFilename);
 
-  ForegroundBackgroundSegmentMask::Pointer backgroundMask =
-      ForegroundBackgroundSegmentMask::New();
-  backgroundMask->ReadFromImage(backgroundFilename, ForegroundPixelValueWrapper<int>(0),
-                                BackgroundPixelValueWrapper<int>(255));
+  StrokeMask::Pointer backgroundStrokeMask =
+      StrokeMask::New();
+  backgroundStrokeMask->Read(backgroundFilename);
   
   // Perform the cut
   ImageGraphCut<ImageType> GraphCut;
@@ -90,9 +89,9 @@ int main(int argc, char*argv[])
   GraphCut.SetNumberOfHistogramBins(20);
   GraphCut.SetLambda(.01);
   std::vector<itk::Index<2> > foregroundPixels =
-      ITKHelpers::GetPixelsWithValue(foregroundMask.GetPointer(), ForegroundBackgroundSegmentMaskPixelTypeEnum::FOREGROUND);
+      ITKHelpers::GetPixelsWithValue(foregroundStrokeMask.GetPointer(), StrokeMaskPixelTypeEnum::STROKE);
   std::vector<itk::Index<2> > backgroundPixels =
-      ITKHelpers::GetPixelsWithValue(backgroundMask.GetPointer(), ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
+      ITKHelpers::GetPixelsWithValue(backgroundStrokeMask.GetPointer(), StrokeMaskPixelTypeEnum::STROKE);
   GraphCut.SetSources(foregroundPixels);
   GraphCut.SetSinks(backgroundPixels);
   GraphCut.PerformSegmentation();
