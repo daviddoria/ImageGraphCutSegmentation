@@ -63,7 +63,7 @@ int main(int argc, char*argv[])
             << "outputFilename: " << outputFilename << std::endl;
 
   // The type of the image to segment
-  typedef itk::VectorImage<float, 2> ImageType;
+  typedef itk::VectorImage<unsigned char, 2> ImageType;
 
   // Read the image
   typedef itk::ImageFileReader<ImageType> ReaderType;
@@ -97,8 +97,17 @@ int main(int argc, char*argv[])
   GraphCut.PerformSegmentation();
 
   // Get and write the result
-  ForegroundBackgroundSegmentMask* result = GraphCut.GetSegmentMask();
+  ForegroundBackgroundSegmentMask* segmentMask = GraphCut.GetSegmentMask();
 
-  result->Write<unsigned char>(outputFilename, ForegroundPixelValueWrapper<unsigned char>(0),
-                BackgroundPixelValueWrapper<unsigned char>(255));
+//  segmentMask->Write<unsigned char>(outputFilename, ForegroundPixelValueWrapper<unsigned char>(0),
+//                BackgroundPixelValueWrapper<unsigned char>(255));
+
+  ImageType::Pointer result = ImageType::New();
+  ITKHelpers::DeepCopy(reader->GetOutput(), result.GetPointer());
+  ImageType::PixelType backgroundColor(3);
+  backgroundColor.Fill(0);
+  segmentMask->ApplyToImage(result.GetPointer(), backgroundColor);
+
+  ITKHelpers::WriteImage(result.GetPointer(), outputFilename);
+
 }
