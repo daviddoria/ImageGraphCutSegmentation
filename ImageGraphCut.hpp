@@ -112,10 +112,26 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
   std::cerr << "There were " << numberOfUnlabeledNodes << " unlabeled nodes!" << std::endl;
 }
 
+// This function assumes that the ReverseEdges and EdgeWeights members are already large enough to accept the
+// new data (otherwise we would have to push_back/resize millions of times).
 template <typename TImage, typename TPixelDifferenceFunctor>
 void ImageGraphCut<TImage, TPixelDifferenceFunctor>::
 AddBidirectionalEdge(const unsigned int source, const unsigned int target, const float weight)
 {
+    // skip "edge already exists check" if the node ids are too high (because it segfaults)
+    if(source < num_vertices(this->Graph)+1 && target < num_vertices(this->Graph)+1)
+    {
+        // If the edge already exists, do nothing
+        //auto edgeCheck = boost::edge(source, target, this->Graph);
+//        std::cout << "Checking edge..." << std::endl;
+        std::pair<EdgeDescriptor, bool> edgeCheck = boost::edge(source, target, this->Graph);
+//        std::cout << "Edge check complete." << std::endl;
+        if(edgeCheck.second == true)
+        {
+            return;
+        }
+    }
+
     // Add edges between grid vertices. We have to create the edge and the reverse edge,
     // then add the reverseEdge as the corresponding reverse edge to 'edge', and then add 'edge'
     // as the corresponding reverse edge to 'reverseEdge'
@@ -131,10 +147,15 @@ AddBidirectionalEdge(const unsigned int source, const unsigned int target, const
     }
 
     EdgeDescriptor reverseEdge = add_edge(target, source, nextEdgeId + 1, this->Graph).first;
-    this->ReverseEdges.push_back(reverseEdge);
-    this->ReverseEdges.push_back(edge);
-    this->EdgeWeights.push_back(weight);
-    this->EdgeWeights.push_back(weight);
+//    this->ReverseEdges.push_back(reverseEdge);
+//    this->ReverseEdges.push_back(edge);
+//    this->EdgeWeights.push_back(weight);
+//    this->EdgeWeights.push_back(weight);
+
+    this->ReverseEdges[nextEdgeId] = reverseEdge;
+    this->ReverseEdges[nextEdgeId + 1] = edge;
+    this->EdgeWeights[nextEdgeId] = weight;
+    this->EdgeWeights[nextEdgeId + 1] = weight;
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
@@ -252,6 +273,16 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateNEdges()
   std::cout << "CreateNEdges()" << std::endl;
   // Create n-edges and set n-edge weights (links between image nodes)
 
+  itk::Size<2> imageSize = this->Image->GetLargestPossibleRegion().GetSize();
+
+  unsigned int expectedNumberOfNEdges = 2*(
+                                          imageSize[0] * (imageSize[1] - 1) + // vertical edges
+                                          (imageSize[0]-1) * imageSize[1]  // horizontal edges
+                                          );
+  std::cout << "Resizing for " << expectedNumberOfNEdges << " N-edges." << std::endl;
+  this->EdgeWeights.resize(num_edges(this->Graph) + expectedNumberOfNEdges);
+  this->ReverseEdges.resize(num_edges(this->Graph) + expectedNumberOfNEdges);
+
   // We are only using a 4-connected structure,
   // so the kernel (iteration neighborhood) must only be
   // 3x3 (specified by a radius of 1)
@@ -259,11 +290,6 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateNEdges()
   radius.Fill(1);
 
   typedef itk::ShapedNeighborhoodIterator<TImage> IteratorType;
-
-  //  itk::Size<2> imageSize = this->Image->GetLargestPossibleRegion().GetSize();
-  //  this->EdgeWeights.resize(imageSize[0] * (imageSize[1] - 1) + // vertical edges
-  //                           imageSize[1] * (imageSize[0] - 1) + // horizontal edges
-  //                           imageSize[0] * imageSize[1] * 2); // source and sink edges
 
   // Traverse the image adding an edge between the current pixel
   // and the pixel below it and the current pixel and the pixel to the right of it.
@@ -325,6 +351,14 @@ template <typename TImage, typename TPixelDifferenceFunctor>
 void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
 {
   std::cout << "CreateTEdges()" << std::endl;
+
+  itk::Size<2> imageSize = this->Image->GetLargestPossibleRegion().GetSize();
+
+  unsigned int expectedNumberOfTEdges = 2*2*(imageSize[0] * imageSize[1]);
+
+  this->EdgeWeights.resize(num_edges(this->Graph) + expectedNumberOfTEdges);
+  this->ReverseEdges.resize(num_edges(this->Graph) + expectedNumberOfTEdges);
+
   // Add t-edges and set t-edge weights (links from image nodes to virtual background and virtual foreground node)
 
   // Compute the histograms of the selected foreground and background pixels
@@ -332,10 +366,10 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
 
   itk::ImageRegionIterator<TImage>
       imageIterator(this->Image,
-                      this->Image->GetLargestPossibleRegion());
+                    this->Image->GetLargestPossibleRegion());
   itk::ImageRegionIterator<NodeImageType>
       nodeIterator(this->NodeImage,
-                     this->NodeImage->GetLargestPossibleRegion());
+                   this->NodeImage->GetLargestPossibleRegion());
   imageIterator.GoToBegin();
   nodeIterator.GoToBegin();
 
@@ -441,6 +475,15 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateGraph()
 
   CreateNEdges();
   CreateTEdges();
+
+  {
+  itk::Size<2> imageSize = this->NodeImage->GetLargestPossibleRegion().GetSize();
+
+  std::cout << "Number of edges " << num_edges(this->Graph) << std::endl;
+  int expectedEdges = imageSize[0]*imageSize[1] * 2 * 2 + // one '2' is because there is an edge to both the source and sink from each pixel, and the other '2' is because they are double edges (bidirectional)
+                      2*(imageSize[0]-1)*imageSize[1] + 2*imageSize[0]*(imageSize[1]-1); // both '2's are for the double edges (this is the number of horizontal edges + the number of vertical edges)
+  std::cout << "(Should be " << expectedEdges << " edges.)" << std::endl;
+  }
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
