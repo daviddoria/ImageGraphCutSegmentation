@@ -84,6 +84,7 @@ int main(int argc, char*argv[])
   backgroundStrokeMask->Read(backgroundFilename);
   
   // Perform the cut
+  std::cout << "Starting graphcut..." << std::endl;
   ImageGraphCut<ImageType> GraphCut;
   GraphCut.SetImage(reader->GetOutput());
   GraphCut.SetNumberOfHistogramBins(20);
@@ -99,8 +100,8 @@ int main(int argc, char*argv[])
   // Get and write the result
   ForegroundBackgroundSegmentMask* segmentMask = GraphCut.GetSegmentMask();
 
-//  segmentMask->Write<unsigned char>(outputFilename, ForegroundPixelValueWrapper<unsigned char>(0),
-//                BackgroundPixelValueWrapper<unsigned char>(255));
+  segmentMask->Write<unsigned char>("resultingMask.png", ForegroundPixelValueWrapper<unsigned char>(0),
+                BackgroundPixelValueWrapper<unsigned char>(255));
 
   ImageType::Pointer result = ImageType::New();
   ITKHelpers::DeepCopy(reader->GetOutput(), result.GetPointer());

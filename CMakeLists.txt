@@ -23,6 +23,13 @@ if( "${ITK_VERSION_MAJOR}" LESS 4 )
   MESSAGE(FATAL_ERROR "You must build ImageGraphCutSegmentation with ITK >= 4.0!")
 endif( "${ITK_VERSION_MAJOR}" LESS 4 )
 
+# Boost
+set(Boost_USE_MULTITHREADED ON)
+FIND_PACKAGE(Boost 1.42 COMPONENTS required)
+
+INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES} ${Boost_INCLUDE_DIRS})
+LINK_DIRECTORIES(${LINK_DIRECTORIES} ${Boost_LIBRARY_DIRS})
+
 # Submodules
 UseSubmodule(Mask ImageGraphCutSegmentation)
 

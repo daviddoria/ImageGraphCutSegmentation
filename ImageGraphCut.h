@@ -33,9 +33,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // STL
 #include <vector>
 
-// Kolmogorov's code
-#include "Kolmogorov/graph.h"
-typedef Graph GraphType;
+// Boost
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/one_bit_color_map.hpp>
+#include <boost/graph/stoer_wagner_min_cut.hpp>
+#include <boost/property_map/property_map.hpp>
+#include <boost/graph/grid_graph.hpp>
 
 /** Perform graph cut based segmentation on an image. Image pixels can contain any
   * number of components (i.e. grayscale, RGB, RGBA, RGBD, etc.).
@@ -53,7 +56,7 @@ public:
   TPixelDifferenceFunctor PixelDifferenceFunctor;
 
   /** This is a special type to keep track of the graph node labels. */
-  typedef itk::Image<void*, 2> NodeImageType;
+  typedef itk::Image<unsigned int, 2> NodeImageType;
 
   /** The type of the histograms. */
   typedef itk::Statistics::Histogram< float,
@@ -90,8 +93,30 @@ public:
 
 protected:
 
-  /** A Kolmogorov graph object */
-  GraphType* Graph;
+  /** A graph object for Stoer Wagner*/
+//  typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
+//    boost::no_property, boost::property<boost::edge_weight_t, float> > GraphType;
+//  typedef boost::property_map<GraphType, boost::edge_weight_t>::type EdgeWeightMap;
+
+  /** A graph object for Kolmogorov*/
+  typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS,
+      boost::no_property,
+      boost::property<boost::edge_index_t, std::size_t> > GraphType;
+
+  typedef boost::graph_traits<GraphType>::vertex_descriptor VertexDescriptor;
+  typedef boost::graph_traits<GraphType>::edge_descriptor EdgeDescriptor;
+  typedef boost::graph_traits<GraphType>::vertices_size_type VertexIndex;
+  typedef boost::graph_traits<GraphType>::edges_size_type EdgeIndex;
+
+  std::vector<EdgeDescriptor> ReverseEdges;
+
+  void AddBidirectionalEdge(const unsigned int source,
+                            const unsigned int target,
+                            const float weight);
+
+  GraphType Graph;
+
+  std::vector<float> EdgeWeights;
 
   /** The output segmentation */
   ForegroundBackgroundSegmentMask::Pointer ResultingSegments;
@@ -125,6 +150,9 @@ protected:
   /** Create a Kolmogorov graph structure from the image and selections */
   void CreateGraph();
 
+  void CreateNEdges();
+  void CreateTEdges();
+
   /** Perform the s-t min cut */
   void CutGraph();
 
@@ -143,6 +171,8 @@ protected:
   /** The image to be segmented */
   typename TImage::Pointer Image;
 
+  unsigned int SourceNodeId;
+  unsigned int SinkNodeId;
 };
 
 #include "ImageGraphCut.hpp"
