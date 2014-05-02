@@ -249,170 +249,171 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
 template <typename TImage, typename TPixelDifferenceFunctor>
 void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateNEdges()
 {
-    std::cout << "CreateNEdges()" << std::endl;
+  std::cout << "CreateNEdges()" << std::endl;
   // Create n-edges and set n-edge weights (links between image nodes)
 
-    // We are only using a 4-connected structure,
-    // so the kernel (iteration neighborhood) must only be
-    // 3x3 (specified by a radius of 1)
-    itk::Size<2> radius;
-    radius.Fill(1);
+  // We are only using a 4-connected structure,
+  // so the kernel (iteration neighborhood) must only be
+  // 3x3 (specified by a radius of 1)
+  itk::Size<2> radius;
+  radius.Fill(1);
 
-    typedef itk::ShapedNeighborhoodIterator<TImage> IteratorType;
+  typedef itk::ShapedNeighborhoodIterator<TImage> IteratorType;
 
   //  itk::Size<2> imageSize = this->Image->GetLargestPossibleRegion().GetSize();
   //  this->EdgeWeights.resize(imageSize[0] * (imageSize[1] - 1) + // vertical edges
   //                           imageSize[1] * (imageSize[0] - 1) + // horizontal edges
   //                           imageSize[0] * imageSize[1] * 2); // source and sink edges
 
-    // Traverse the image adding an edge between the current pixel
-    // and the pixel below it and the current pixel and the pixel to the right of it.
-    // This prevents duplicate edges (i.e. we cannot add an edge to
-    // all 4-connected neighbors of every pixel or almost every edge would be duplicated.
-    std::vector<typename IteratorType::OffsetType> neighbors;
-    typename IteratorType::OffsetType bottom = {{0,1}};
-    neighbors.push_back(bottom);
-    typename IteratorType::OffsetType right = {{1,0}};
-    neighbors.push_back(right);
+  // Traverse the image adding an edge between the current pixel
+  // and the pixel below it and the current pixel and the pixel to the right of it.
+  // This prevents duplicate edges (i.e. we cannot add an edge to
+  // all 4-connected neighbors of every pixel or almost every edge would be duplicated.
+  std::vector<typename IteratorType::OffsetType> neighbors;
+  typename IteratorType::OffsetType bottom = {{0,1}};
+  neighbors.push_back(bottom);
+  typename IteratorType::OffsetType right = {{1,0}};
+  neighbors.push_back(right);
 
-    typename IteratorType::OffsetType center = {{0,0}};
+  typename IteratorType::OffsetType center = {{0,0}};
 
-    IteratorType iterator(radius, this->Image, this->Image->GetLargestPossibleRegion());
-    iterator.ClearActiveList();
-    iterator.ActivateOffset(bottom);
-    iterator.ActivateOffset(right);
-    iterator.ActivateOffset(center);
+  IteratorType iterator(radius, this->Image, this->Image->GetLargestPossibleRegion());
+  iterator.ClearActiveList();
+  iterator.ActivateOffset(bottom);
+  iterator.ActivateOffset(right);
+  iterator.ActivateOffset(center);
 
-    // Estimate the "camera noise"
-    double sigma = this->ComputeNoise();
+  // Estimate the "camera noise"
+  double sigma = this->ComputeNoise();
 
-    for(iterator.GoToBegin(); !iterator.IsAtEnd(); ++iterator)
+  for(iterator.GoToBegin(); !iterator.IsAtEnd(); ++iterator)
+  {
+    PixelType centerPixel = iterator.GetPixel(center);
+
+    for(unsigned int i = 0; i < neighbors.size(); i++)
+    {
+      bool valid;
+      iterator.GetPixel(neighbors[i], valid);
+
+      // If the current neighbor is outside the image, skip it
+      if(!valid)
       {
-      PixelType centerPixel = iterator.GetPixel(center);
-
-      for(unsigned int i = 0; i < neighbors.size(); i++)
-        {
-        bool valid;
-        iterator.GetPixel(neighbors[i], valid);
-
-        // If the current neighbor is outside the image, skip it
-        if(!valid)
-          {
-          continue;
-          }
-        PixelType neighborPixel = iterator.GetPixel(neighbors[i]);
-
-        // Compute the Euclidean distance between the pixel intensities
-        float pixelDifference = PixelDifferenceFunctor.Difference(centerPixel, neighborPixel);
-
-        // Compute the edge weight
-        float weight = exp(-pow(pixelDifference,2)/(2.0*sigma*sigma));
-        assert(weight >= 0);
-
-        // Add the edge to the graph
-        unsigned int node1 = this->NodeImage->GetPixel(iterator.GetIndex(center));
-        unsigned int node2 = this->NodeImage->GetPixel(iterator.GetIndex(neighbors[i]));
-
-        AddBidirectionalEdge(node1, node2, weight);
-        }
+        continue;
       }
 
-    std::cout << "Finished CreateNEdges()" << std::endl;
+      PixelType neighborPixel = iterator.GetPixel(neighbors[i]);
+
+      // Compute the Euclidean distance between the pixel intensities
+      float pixelDifference = PixelDifferenceFunctor.Difference(centerPixel, neighborPixel);
+
+      // Compute the edge weight
+      float weight = exp(-pow(pixelDifference,2)/(2.0*sigma*sigma));
+      assert(weight >= 0);
+
+      // Add the edge to the graph
+      unsigned int node1 = this->NodeImage->GetPixel(iterator.GetIndex(center));
+      unsigned int node2 = this->NodeImage->GetPixel(iterator.GetIndex(neighbors[i]));
+
+      AddBidirectionalEdge(node1, node2, weight);
+    }
+  }
+
+  std::cout << "Finished CreateNEdges()" << std::endl;
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
 void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
 {
-    std::cout << "CreateTEdges()" << std::endl;
-    // Add t-edges and set t-edge weights (links from image nodes to virtual background and virtual foreground node)
+  std::cout << "CreateTEdges()" << std::endl;
+  // Add t-edges and set t-edge weights (links from image nodes to virtual background and virtual foreground node)
 
-    // Compute the histograms of the selected foreground and background pixels
-    CreateSamples();
+  // Compute the histograms of the selected foreground and background pixels
+  CreateSamples();
 
-    itk::ImageRegionIterator<TImage>
-        imageIterator(this->Image,
+  itk::ImageRegionIterator<TImage>
+      imageIterator(this->Image,
                       this->Image->GetLargestPossibleRegion());
-    itk::ImageRegionIterator<NodeImageType>
-        nodeIterator(this->NodeImage,
+  itk::ImageRegionIterator<NodeImageType>
+      nodeIterator(this->NodeImage,
                      this->NodeImage->GetLargestPossibleRegion());
-    imageIterator.GoToBegin();
-    nodeIterator.GoToBegin();
+  imageIterator.GoToBegin();
+  nodeIterator.GoToBegin();
 
-    // Since the t-weight function takes the log of the histogram value,
-    // we must handle bins with frequency = 0 specially (because log(0) = -inf)
-    // For empty histogram bins we use tinyValue instead of 0.
-    float tinyValue = 1e-10;
+  // Since the t-weight function takes the log of the histogram value,
+  // we must handle bins with frequency = 0 specially (because log(0) = -inf)
+  // For empty histogram bins we use tinyValue instead of 0.
+  float tinyValue = 1e-10;
 
-    while(!imageIterator.IsAtEnd())
+  while(!imageIterator.IsAtEnd())
+  {
+    PixelType pixel = imageIterator.Get();
+    //std::cout << "Pixels have size: " << pixel.Size() << std::endl;
+
+    HistogramType::MeasurementVectorType measurementVector(pixel.Size());
+    for(unsigned int i = 0; i < pixel.Size(); i++)
     {
-      PixelType pixel = imageIterator.Get();
-      //std::cout << "Pixels have size: " << pixel.Size() << std::endl;
-
-      HistogramType::MeasurementVectorType measurementVector(pixel.Size());
-      for(unsigned int i = 0; i < pixel.Size(); i++)
-      {
-        measurementVector[i] = pixel[i];
-      }
-
-      HistogramType::IndexType backgroundIndex;
-      this->BackgroundHistogram->GetIndex(measurementVector, backgroundIndex);
-      float sinkHistogramValue =
-          this->BackgroundHistogram->GetFrequency(backgroundIndex);
-
-      HistogramType::IndexType foregroundIndex;
-      this->ForegroundHistogram->GetIndex(measurementVector, foregroundIndex);
-      float sourceHistogramValue =
-          this->ForegroundHistogram->GetFrequency(foregroundIndex);
-
-      // Conver the histogram value/frequency to make it as if it came from a normalized histogram
-      if(this->BackgroundHistogram->GetTotalFrequency() == 0 ||
-         this->ForegroundHistogram->GetTotalFrequency() == 0)
-      {
-        throw std::runtime_error("The foreground or background histogram TotalFrequency is 0!");
-      }
-
-      sinkHistogramValue /= this->BackgroundHistogram->GetTotalFrequency();
-      sourceHistogramValue /= this->ForegroundHistogram->GetTotalFrequency();
-
-      if(sinkHistogramValue <= 0)
-      {
-        sinkHistogramValue = tinyValue;
-      }
-      if(sourceHistogramValue <= 0)
-      {
-        sourceHistogramValue = tinyValue;
-      }
-
-      // Add the edge to the graph and set its weight
-      // log() is the natural log
-      AddBidirectionalEdge(nodeIterator.Get(), this->SinkNodeId, -this->Lambda*log(sourceHistogramValue));
-      AddBidirectionalEdge(nodeIterator.Get(), this->SourceNodeId, -this->Lambda*log(sinkHistogramValue));
-
-      ++imageIterator;
-      ++nodeIterator;
+      measurementVector[i] = pixel[i];
     }
 
-    // Set very high source weights for the pixels that were
-    // selected as foreground by the user
-    for(unsigned int i = 0; i < this->Sources.size(); i++)
-    {
-      AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sources[i]), this->SourceNodeId,
-                          this->Lambda * std::numeric_limits<float>::max());
+    HistogramType::IndexType backgroundIndex;
+    this->BackgroundHistogram->GetIndex(measurementVector, backgroundIndex);
+    float sinkHistogramValue =
+        this->BackgroundHistogram->GetFrequency(backgroundIndex);
 
-      AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sources[i]), this->SinkNodeId, 0);
+    HistogramType::IndexType foregroundIndex;
+    this->ForegroundHistogram->GetIndex(measurementVector, foregroundIndex);
+    float sourceHistogramValue =
+        this->ForegroundHistogram->GetFrequency(foregroundIndex);
+
+    // Conver the histogram value/frequency to make it as if it came from a normalized histogram
+    if(this->BackgroundHistogram->GetTotalFrequency() == 0 ||
+       this->ForegroundHistogram->GetTotalFrequency() == 0)
+    {
+      throw std::runtime_error("The foreground or background histogram TotalFrequency is 0!");
     }
 
-    // Set very high sink weights for the pixels that
-    // were selected as background by the user
-    for(unsigned int i = 0; i < this->Sinks.size(); i++)
-    {
-        AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sinks[i]), this->SourceNodeId, 0);
+    sinkHistogramValue /= this->BackgroundHistogram->GetTotalFrequency();
+    sourceHistogramValue /= this->ForegroundHistogram->GetTotalFrequency();
 
-        AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sinks[i]), this->SinkNodeId,
-                             this->Lambda * std::numeric_limits<float>::max());
+    if(sinkHistogramValue <= 0)
+    {
+      sinkHistogramValue = tinyValue;
+    }
+    if(sourceHistogramValue <= 0)
+    {
+      sourceHistogramValue = tinyValue;
     }
 
-    std::cout << "Finished CreateTEdges()" << std::endl;
+    // Add the edge to the graph and set its weight
+    // log() is the natural log
+    AddBidirectionalEdge(nodeIterator.Get(), this->SinkNodeId, -this->Lambda*log(sourceHistogramValue));
+    AddBidirectionalEdge(nodeIterator.Get(), this->SourceNodeId, -this->Lambda*log(sinkHistogramValue));
+
+    ++imageIterator;
+    ++nodeIterator;
+  }
+
+  // Set very high source weights for the pixels that were
+  // selected as foreground by the user
+  for(unsigned int i = 0; i < this->Sources.size(); i++)
+  {
+    AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sources[i]), this->SourceNodeId,
+                        this->Lambda * std::numeric_limits<float>::max());
+
+    AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sources[i]), this->SinkNodeId, 0);
+  }
+
+  // Set very high sink weights for the pixels that
+  // were selected as background by the user
+  for(unsigned int i = 0; i < this->Sinks.size(); i++)
+  {
+      AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sinks[i]), this->SourceNodeId, 0);
+
+      AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sinks[i]), this->SinkNodeId,
+                           this->Lambda * std::numeric_limits<float>::max());
+  }
+
+  std::cout << "Finished CreateTEdges()" << std::endl;
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
@@ -473,24 +474,25 @@ double ImageGraphCut<TImage, TPixelDifferenceFunctor>::ComputeNoise()
 
   // Traverse the image collecting the differences between neighboring pixel intensities
   for(iterator.GoToBegin(); !iterator.IsAtEnd(); ++iterator)
-    {
+  {
     PixelType centerPixel = iterator.GetPixel(center);
 
     for(unsigned int i = 0; i < neighbors.size(); i++)
-      {
+    {
       bool valid;
       iterator.GetPixel(neighbors[i], valid);
       if(!valid)
-        {
+      {
         continue;
-        }
+      }
+
       PixelType neighborPixel = iterator.GetPixel(neighbors[i]);
 
       float colorDifference = PixelDifferenceFunctor.Difference(centerPixel, neighborPixel);
       sigma += colorDifference;
       numberOfEdges++;
-      }
     }
+  }
 
   // Normalize
   sigma /= static_cast<double>(numberOfEdges);

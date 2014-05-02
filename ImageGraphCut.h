@@ -93,11 +93,6 @@ public:
 
 protected:
 
-  /** A graph object for Stoer Wagner*/
-//  typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS,
-//    boost::no_property, boost::property<boost::edge_weight_t, float> > GraphType;
-//  typedef boost::property_map<GraphType, boost::edge_weight_t>::type EdgeWeightMap;
-
   /** A graph object for Kolmogorov*/
   typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS,
       boost::no_property,
@@ -108,14 +103,18 @@ protected:
   typedef boost::graph_traits<GraphType>::vertices_size_type VertexIndex;
   typedef boost::graph_traits<GraphType>::edges_size_type EdgeIndex;
 
+  /** Store the list of edges and their corresponding reverse edges. */
   std::vector<EdgeDescriptor> ReverseEdges;
 
+  /** Create an edge on the graph. */
   void AddBidirectionalEdge(const unsigned int source,
                             const unsigned int target,
                             const float weight);
 
+  /** The main graph object. */
   GraphType Graph;
 
+  /** Maintain a list of all of the edge weights. */
   std::vector<float> EdgeWeights;
 
   /** The output segmentation */
@@ -150,7 +149,10 @@ protected:
   /** Create a Kolmogorov graph structure from the image and selections */
   void CreateGraph();
 
+  /** Create the edges between pixels and neighboring pixels (the grid). */
   void CreateNEdges();
+
+  /** Create the edges between pixels and the terminals (source and sink). */
   void CreateTEdges();
 
   /** Perform the s-t min cut */
@@ -171,6 +173,7 @@ protected:
   /** The image to be segmented */
   typename TImage::Pointer Image;
 
+  /** Store the node ids of the terminals */
   unsigned int SourceNodeId;
   unsigned int SinkNodeId;
 };
