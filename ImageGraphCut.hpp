@@ -84,11 +84,10 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
       nodeImageIterator(this->NodeImage, this->NodeImage->GetLargestPossibleRegion());
   nodeImageIterator.GoToBegin();
 
-  std::cout << "Source is group " << groups[this->SourceNodeId] << std::endl;
-  std::cout << "Sink is group " << groups[this->SinkNodeId] << std::endl;
-
-  unsigned int numberOfUnlabeledNodes = 0;
-
+  // From the documentation:
+  // http://www.boost.org/doc/libs/1_55_0/libs/graph/doc/boykov_kolmogorov_max_flow.html
+  // If the color of a vertex after running the algorithm is black the vertex belongs to
+  // the source tree else it belongs to the sink-tree (used for minimum cuts).
   while(!nodeImageIterator.IsAtEnd())
   {
     if(groups[nodeImageIterator.Get()] == groups[this->SourceNodeId])
@@ -96,20 +95,14 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
       this->ResultingSegments->SetPixel(nodeImageIterator.GetIndex(),
                                         ForegroundBackgroundSegmentMaskPixelTypeEnum::FOREGROUND);
     }
-    else if(groups[nodeImageIterator.Get()] == groups[this->SinkNodeId])
+    else
     {
       this->ResultingSegments->SetPixel(nodeImageIterator.GetIndex(),
                                         ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
     }
-    else
-    {
-//        std::cerr << "Vertex " << nodeImageIterator.Get() << " is group " << groups[nodeImageIterator.Get()] << "!" << std::endl;
-      numberOfUnlabeledNodes++;
-    }
     ++nodeImageIterator;
   }
 
-  std::cerr << "There were " << numberOfUnlabeledNodes << " unlabeled nodes!" << std::endl;
 }
 
 // This function assumes that the ReverseEdges and EdgeWeights members are already large enough to accept the
