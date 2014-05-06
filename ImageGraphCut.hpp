@@ -108,8 +108,8 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
 // This function assumes that the ReverseEdges and EdgeWeights members are already large enough to accept the
 // new data (otherwise we would have to push_back/resize millions of times).
 template <typename TImage, typename TPixelDifferenceFunctor>
-void ImageGraphCut<TImage, TPixelDifferenceFunctor>::
-AddBidirectionalEdge(const unsigned int source, const unsigned int target, const float weight)
+unsigned int ImageGraphCut<TImage, TPixelDifferenceFunctor>::
+AddBidirectionalEdge(unsigned int numberOfEdges, const unsigned int source, const unsigned int target, const float weight)
 {
     // skip "edge already exists check" if the node ids are too high (because it segfaults)
     if(source < num_vertices(this->Graph)+1 && target < num_vertices(this->Graph)+1)
@@ -121,14 +121,15 @@ AddBidirectionalEdge(const unsigned int source, const unsigned int target, const
 //        std::cout << "Edge check complete." << std::endl;
         if(edgeCheck.second == true)
         {
-            return;
+            return numberOfEdges;
         }
     }
 
     // Add edges between grid vertices. We have to create the edge and the reverse edge,
     // then add the reverseEdge as the corresponding reverse edge to 'edge', and then add 'edge'
     // as the corresponding reverse edge to 'reverseEdge'
-    int nextEdgeId = num_edges(this->Graph);
+//    int nextEdgeId = num_edges(this->Graph); // Calling this every time is VERY slow
+    int nextEdgeId = numberOfEdges;
 
     EdgeDescriptor edge;
     bool inserted;
@@ -137,18 +138,17 @@ AddBidirectionalEdge(const unsigned int source, const unsigned int target, const
     if(!inserted)
     {
         std::cerr << "Not inserted!" << std::endl;
+        return numberOfEdges;
     }
 
     EdgeDescriptor reverseEdge = add_edge(target, source, nextEdgeId + 1, this->Graph).first;
-//    this->ReverseEdges.push_back(reverseEdge);
-//    this->ReverseEdges.push_back(edge);
-//    this->EdgeWeights.push_back(weight);
-//    this->EdgeWeights.push_back(weight);
 
     this->ReverseEdges[nextEdgeId] = reverseEdge;
     this->ReverseEdges[nextEdgeId + 1] = edge;
     this->EdgeWeights[nextEdgeId] = weight;
     this->EdgeWeights[nextEdgeId + 1] = weight;
+
+    return numberOfEdges + 2;
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
@@ -305,6 +305,7 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateNEdges()
   // Estimate the "camera noise"
   double sigma = this->ComputeNoise();
 
+  unsigned int currentNumberOfEdges = num_edges(this->Graph);
   for(iterator.GoToBegin(); !iterator.IsAtEnd(); ++iterator)
   {
     PixelType centerPixel = iterator.GetPixel(center);
@@ -333,7 +334,7 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateNEdges()
       unsigned int node1 = this->NodeImage->GetPixel(iterator.GetIndex(center));
       unsigned int node2 = this->NodeImage->GetPixel(iterator.GetIndex(neighbors[i]));
 
-      AddBidirectionalEdge(node1, node2, weight);
+      currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, node1, node2, weight);
     }
   }
 
@@ -370,6 +371,8 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
   // we must handle bins with frequency = 0 specially (because log(0) = -inf)
   // For empty histogram bins we use tinyValue instead of 0.
   float tinyValue = 1e-10;
+
+  unsigned int currentNumberOfEdges = num_edges(this->Graph);
 
   while(!imageIterator.IsAtEnd())
   {
@@ -413,8 +416,8 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
 
     // Add the edge to the graph and set its weight
     // log() is the natural log
-    AddBidirectionalEdge(nodeIterator.Get(), this->SinkNodeId, -this->Lambda*log(sourceHistogramValue));
-    AddBidirectionalEdge(nodeIterator.Get(), this->SourceNodeId, -this->Lambda*log(sinkHistogramValue));
+    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(), this->SinkNodeId, -this->Lambda*log(sourceHistogramValue));
+    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(), this->SourceNodeId, -this->Lambda*log(sinkHistogramValue));
 
     ++imageIterator;
     ++nodeIterator;
@@ -424,19 +427,19 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
   // selected as foreground by the user
   for(unsigned int i = 0; i < this->Sources.size(); i++)
   {
-    AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sources[i]), this->SourceNodeId,
+    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sources[i]), this->SourceNodeId,
                         this->Lambda * std::numeric_limits<float>::max());
 
-    AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sources[i]), this->SinkNodeId, 0);
+    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sources[i]), this->SinkNodeId, 0);
   }
 
   // Set very high sink weights for the pixels that
   // were selected as background by the user
   for(unsigned int i = 0; i < this->Sinks.size(); i++)
   {
-      AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sinks[i]), this->SourceNodeId, 0);
+      currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sinks[i]), this->SourceNodeId, 0);
 
-      AddBidirectionalEdge(this->NodeImage->GetPixel(this->Sinks[i]), this->SinkNodeId,
+      currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sinks[i]), this->SinkNodeId,
                            this->Lambda * std::numeric_limits<float>::max());
   }
 

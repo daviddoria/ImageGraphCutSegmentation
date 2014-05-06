@@ -107,7 +107,7 @@ protected:
   std::vector<EdgeDescriptor> ReverseEdges;
 
   /** Create an edge on the graph. */
-  void AddBidirectionalEdge(const unsigned int source,
+  unsigned int AddBidirectionalEdge(unsigned int numberOfEdges, const unsigned int source,
                             const unsigned int target,
                             const float weight);
 
