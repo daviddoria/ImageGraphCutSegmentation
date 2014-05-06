@@ -33,10 +33,6 @@ LINK_DIRECTORIES(${LINK_DIRECTORIES} ${Boost_LIBRARY_DIRS})
 # Submodules
 UseSubmodule(Mask ImageGraphCutSegmentation)
 
-# Build the graph cut library
-add_subdirectory(Kolmogorov)
-set(ImageGraphCutSegmentation_libraries ${ImageGraphCutSegmentation_libraries} KolmogorovMaxFlow)
-
 # Allow this project to be detected and used as a submodule
 CreateSubmodule(ImageGraphCutSegmentation)
 
