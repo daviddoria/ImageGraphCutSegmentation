@@ -24,3 +24,5 @@ gnu++0x (or gnu++11 for gcc >= 4.7).
 Dependencies
 ------------
 - ITK >= 4
+- Boost 1.51 
+You can tell this project's CMake to use a local boost build with: cmake . -DBOOST_ROOT=/home/doriad/build/boost_1_51
