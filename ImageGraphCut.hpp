@@ -357,13 +357,6 @@ float ImageGraphCut<TImage, TPixelDifferenceFunctor>::InternalForegroundLikeliho
 
     sourceHistogramValue /= this->ForegroundHistogram->GetTotalFrequency();
 
-    float tinyValue = 1e-10;
-
-    if(sourceHistogramValue <= 0)
-    {
-      sourceHistogramValue = tinyValue;
-    }
-
     return sourceHistogramValue;
 }
 
@@ -382,13 +375,6 @@ float ImageGraphCut<TImage, TPixelDifferenceFunctor>::InternalBackgroundLikeliho
         this->BackgroundHistogram->GetFrequency(backgroundIndex);
 
     sinkHistogramValue /= this->BackgroundHistogram->GetTotalFrequency();
-
-    float tinyValue = 1e-10;
-
-    if(sinkHistogramValue <= 0)
-    {
-      sinkHistogramValue = tinyValue;
-    }
 
     return sinkHistogramValue;
 }
@@ -439,6 +425,16 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
 
     float sourceHistogramValue = ForegroundLikelihood(pixel);
     float sinkHistogramValue = BackgroundLikelihood(pixel);
+
+    if(sourceHistogramValue <= 0)
+    {
+      sourceHistogramValue = tinyValue;
+    }
+
+    if(sinkHistogramValue <= 0)
+    {
+      sinkHistogramValue = tinyValue;
+    }
 
     // Convert the histogram value/frequency to make it as if it came from a normalized histogram
 //    if(this->BackgroundHistogram->GetTotalFrequency() == 0 ||

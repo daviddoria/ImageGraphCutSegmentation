@@ -63,11 +63,17 @@ public:
     typedef itk::Statistics::ListSample<PixelType> SampleType;
     typedef itk::Statistics::SampleToHistogramFilter<SampleType, HistogramType> SampleToHistogramFilterType;
 
-  float InternalForegroundLikelihood(const PixelType& pixel);
+  /** The function pointer that gets called to determine the likelihood that the pixel belongs to the foreground. */
   boost::function<float (const PixelType& pixel)> ForegroundLikelihood;
 
-  float InternalBackgroundLikelihood(const PixelType& pixel);
+  /** If nothing else is provided, this is the default background likelihood function. */
+  float InternalForegroundLikelihood(const PixelType& pixel);
+
+  /** The function pointer that gets called to determine the likelihood that the pixel belongs to the background. */
   boost::function<float (const PixelType& pixel)> BackgroundLikelihood;
+
+  /** If nothing else is provided, this is the default background likelihood function. */
+  float InternalBackgroundLikelihood(const PixelType& pixel);
 
   ImageGraphCut()
   {
@@ -86,7 +92,6 @@ public:
     PixelDifferenceFunctor(pixelDifferenceFunctor){}
 
   TPixelDifferenceFunctor PixelDifferenceFunctor;
-
 
   /** Several initializations are done here. */
   void SetImage(TImage* const image);
