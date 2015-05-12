@@ -342,6 +342,58 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateNEdges()
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
+float ImageGraphCut<TImage, TPixelDifferenceFunctor>::InternalForegroundLikelihood(const PixelType& pixel)
+{
+    HistogramType::MeasurementVectorType measurementVector(pixel.Size());
+    for(unsigned int i = 0; i < pixel.Size(); i++)
+    {
+      measurementVector[i] = pixel[i];
+    }
+
+    HistogramType::IndexType foregroundIndex;
+    this->ForegroundHistogram->GetIndex(measurementVector, foregroundIndex);
+    float sourceHistogramValue =
+        this->ForegroundHistogram->GetFrequency(foregroundIndex);
+
+    sourceHistogramValue /= this->ForegroundHistogram->GetTotalFrequency();
+
+    float tinyValue = 1e-10;
+
+    if(sourceHistogramValue <= 0)
+    {
+      sourceHistogramValue = tinyValue;
+    }
+
+    return sourceHistogramValue;
+}
+
+template <typename TImage, typename TPixelDifferenceFunctor>
+float ImageGraphCut<TImage, TPixelDifferenceFunctor>::InternalBackgroundLikelihood(const PixelType& pixel)
+{
+    HistogramType::MeasurementVectorType measurementVector(pixel.Size());
+    for(unsigned int i = 0; i < pixel.Size(); i++)
+    {
+      measurementVector[i] = pixel[i];
+    }
+
+    HistogramType::IndexType backgroundIndex;
+    this->BackgroundHistogram->GetIndex(measurementVector, backgroundIndex);
+    float sinkHistogramValue =
+        this->BackgroundHistogram->GetFrequency(backgroundIndex);
+
+    sinkHistogramValue /= this->BackgroundHistogram->GetTotalFrequency();
+
+    float tinyValue = 1e-10;
+
+    if(sinkHistogramValue <= 0)
+    {
+      sinkHistogramValue = tinyValue;
+    }
+
+    return sinkHistogramValue;
+}
+
+template <typename TImage, typename TPixelDifferenceFunctor>
 void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
 {
   std::cout << "CreateTEdges()" << std::endl;
@@ -385,39 +437,22 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
       measurementVector[i] = pixel[i];
     }
 
-    HistogramType::IndexType backgroundIndex;
-    this->BackgroundHistogram->GetIndex(measurementVector, backgroundIndex);
-    float sinkHistogramValue =
-        this->BackgroundHistogram->GetFrequency(backgroundIndex);
+    float sourceHistogramValue = ForegroundLikelihood(pixel);
+    float sinkHistogramValue = BackgroundLikelihood(pixel);
 
-    HistogramType::IndexType foregroundIndex;
-    this->ForegroundHistogram->GetIndex(measurementVector, foregroundIndex);
-    float sourceHistogramValue =
-        this->ForegroundHistogram->GetFrequency(foregroundIndex);
-
-    // Conver the histogram value/frequency to make it as if it came from a normalized histogram
-    if(this->BackgroundHistogram->GetTotalFrequency() == 0 ||
-       this->ForegroundHistogram->GetTotalFrequency() == 0)
-    {
-      throw std::runtime_error("The foreground or background histogram TotalFrequency is 0!");
-    }
-
-    sinkHistogramValue /= this->BackgroundHistogram->GetTotalFrequency();
-    sourceHistogramValue /= this->ForegroundHistogram->GetTotalFrequency();
-
-    if(sinkHistogramValue <= 0)
-    {
-      sinkHistogramValue = tinyValue;
-    }
-    if(sourceHistogramValue <= 0)
-    {
-      sourceHistogramValue = tinyValue;
-    }
+    // Convert the histogram value/frequency to make it as if it came from a normalized histogram
+//    if(this->BackgroundHistogram->GetTotalFrequency() == 0 ||
+//       this->ForegroundHistogram->GetTotalFrequency() == 0)
+//    {
+//      throw std::runtime_error("The foreground or background histogram TotalFrequency is 0!");
+//    }
 
     // Add the edge to the graph and set its weight
     // log() is the natural log
-    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(), this->SinkNodeId, -this->Lambda*log(sourceHistogramValue));
-    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(), this->SourceNodeId, -this->Lambda*log(sinkHistogramValue));
+    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(),
+                                                this->SinkNodeId, -this->Lambda*log(sourceHistogramValue));
+    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(),
+                                                this->SourceNodeId, -this->Lambda*log(sinkHistogramValue));
 
     ++imageIterator;
     ++nodeIterator;

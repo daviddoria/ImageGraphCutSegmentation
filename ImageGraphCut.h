@@ -37,6 +37,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/graph/grid_graph.hpp>
+#include <boost/function.hpp>
+#include <boost/bind.hpp>
 
 /** Perform graph cut based segmentation on an image. Image pixels can contain any
   * number of components (i.e. grayscale, RGB, RGBA, RGBD, etc.).
@@ -45,23 +47,46 @@ template <typename TImage, typename TPixelDifferenceFunctor = RGBPixelDifference
 class ImageGraphCut
 {
 public:
+    // Typedefs
 
-  ImageGraphCut(){}
+    /** This is a special type to keep track of the graph node labels. */
+    typedef itk::Image<unsigned int, 2> NodeImageType;
+
+    /** The type of the histograms. */
+    typedef itk::Statistics::Histogram< float,
+            itk::Statistics::DenseFrequencyContainer2 > HistogramType;
+
+    /** The type of a list of pixels/indexes. */
+    typedef std::vector<itk::Index<2> > IndexContainer;
+
+    typedef typename TImage::PixelType PixelType;
+    typedef itk::Statistics::ListSample<PixelType> SampleType;
+    typedef itk::Statistics::SampleToHistogramFilter<SampleType, HistogramType> SampleToHistogramFilterType;
+
+  float InternalForegroundLikelihood(const PixelType& pixel);
+  boost::function<float (const PixelType& pixel)> ForegroundLikelihood;
+
+  float InternalBackgroundLikelihood(const PixelType& pixel);
+  boost::function<float (const PixelType& pixel)> BackgroundLikelihood;
+
+  ImageGraphCut()
+  {
+      this->ForegroundLikelihood =
+              boost::bind(
+                  &ImageGraphCut::
+                  InternalForegroundLikelihood, this, _1);
+
+      this->BackgroundLikelihood =
+              boost::bind(
+                  &ImageGraphCut::
+                  InternalBackgroundLikelihood, this, _1);
+  }
 
   ImageGraphCut(TPixelDifferenceFunctor pixelDifferenceFunctor) :
     PixelDifferenceFunctor(pixelDifferenceFunctor){}
 
   TPixelDifferenceFunctor PixelDifferenceFunctor;
 
-  /** This is a special type to keep track of the graph node labels. */
-  typedef itk::Image<unsigned int, 2> NodeImageType;
-
-  /** The type of the histograms. */
-  typedef itk::Statistics::Histogram< float,
-          itk::Statistics::DenseFrequencyContainer2 > HistogramType;
-
-  /** The type of a list of pixels/indexes. */
-  typedef std::vector<itk::Index<2> > IndexContainer;
 
   /** Several initializations are done here. */
   void SetImage(TImage* const image);
@@ -133,11 +158,6 @@ protected:
   /** An image which keeps tracks of the mapping between pixel index and graph node id */
   NodeImageType::Pointer NodeImage;
 
-  // Typedefs
-  typedef typename TImage::PixelType PixelType;
-  typedef itk::Statistics::ListSample<PixelType> SampleType;
-  typedef itk::Statistics::SampleToHistogramFilter<SampleType, HistogramType> SampleToHistogramFilterType;
-
   /** Create the histograms from the users selections */
   void CreateSamples();
 
@@ -155,6 +175,8 @@ protected:
 
   /** Perform the s-t min cut */
   void CutGraph();
+
+
 
   /** The ITK data structure for storing the values that we will compute the histogram of. */
   typename SampleType::Pointer ForegroundSample;
