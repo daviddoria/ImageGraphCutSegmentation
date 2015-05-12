@@ -25,10 +25,8 @@ endif( "${ITK_VERSION_MAJOR}" LESS 4 )
 
 # Boost
 set(Boost_USE_MULTITHREADED ON)
-FIND_PACKAGE(Boost 1.42 COMPONENTS required)
-
-INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES} ${Boost_INCLUDE_DIRS})
-LINK_DIRECTORIES(${LINK_DIRECTORIES} ${Boost_LIBRARY_DIRS})
+FIND_PACKAGE(Boost 1.50)
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 
 # Submodules
 UseSubmodule(Mask ImageGraphCutSegmentation)
@@ -41,7 +39,7 @@ include_directories(${ImageGraphCutSegmentation_include_dirs})
 
 # Make the h/hpp files appear in a QtCreator project
 add_custom_target(ImageGraphCut SOURCES
-ImageGraphCut.h ImageGraphCut.hpp PixelDifference.h)
+ImageGraphCut.h ImageGraphCut.hpp PixelDifference.h README.md)
 
 option(ImageGraphCutSegmentation_BuildExamples "Build ImageGraphCutSegmentation examples?")
 if(ImageGraphCutSegmentation_BuildExamples)
@@ -51,5 +49,4 @@ endif()
 option(ImageGraphCutSegmentation_BuildTests "Build ImageGraphCutSegmentation tests?")
 if(ImageGraphCutSegmentation_BuildTests)
   add_subdirectory(Tests)
-  add_subdirectory(Kolmogorov/Tests)
 endif()

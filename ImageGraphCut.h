@@ -35,8 +35,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Boost
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/one_bit_color_map.hpp>
-#include <boost/graph/stoer_wagner_min_cut.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/graph/grid_graph.hpp>
 
