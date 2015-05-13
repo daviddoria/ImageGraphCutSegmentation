@@ -47,30 +47,24 @@ template <typename TImage, typename TPixelDifferenceFunctor = RGBPixelDifference
 class ImageGraphCut
 {
 public:
-    // Typedefs
+  // Typedefs
 
-    /** This is a special type to keep track of the graph node labels. */
-    typedef itk::Image<unsigned int, 2> NodeImageType;
+  /** This is a special type to keep track of the graph node labels. */
+  typedef itk::Image<unsigned int, 2> NodeImageType;
 
-    /** The type of the histograms. */
-    typedef itk::Statistics::Histogram< float,
-            itk::Statistics::DenseFrequencyContainer2 > HistogramType;
+  /** The type of the histograms. */
+  typedef itk::Statistics::Histogram< float,
+          itk::Statistics::DenseFrequencyContainer2 > HistogramType;
 
-    /** The type of a list of pixels/indexes. */
-    typedef std::vector<itk::Index<2> > IndexContainer;
+  /** The type of a list of pixels/indexes. */
+  typedef std::vector<itk::Index<2> > IndexContainer;
 
-    typedef typename TImage::PixelType PixelType;
-    typedef itk::Statistics::ListSample<PixelType> SampleType;
-    typedef itk::Statistics::SampleToHistogramFilter<SampleType, HistogramType> SampleToHistogramFilterType;
-
-  /** The function pointer that gets called to determine the likelihood that the pixel belongs to the foreground. */
-  boost::function<float (const PixelType& pixel)> ForegroundLikelihood;
+  typedef typename TImage::PixelType PixelType;
+  typedef itk::Statistics::ListSample<PixelType> SampleType;
+  typedef itk::Statistics::SampleToHistogramFilter<SampleType, HistogramType> SampleToHistogramFilterType;
 
   /** If nothing else is provided, this is the default background likelihood function. */
   float InternalForegroundLikelihood(const PixelType& pixel);
-
-  /** The function pointer that gets called to determine the likelihood that the pixel belongs to the background. */
-  boost::function<float (const PixelType& pixel)> BackgroundLikelihood;
 
   /** If nothing else is provided, this is the default background likelihood function. */
   float InternalBackgroundLikelihood(const PixelType& pixel);
@@ -118,6 +112,18 @@ public:
 
   /** Set the number of bins per dimension of the foreground and background histograms. */
   void SetNumberOfHistogramBins(const int);
+
+  void SetForegroundLikelihoodFunction(boost::function<float (const PixelType& pixel)> f)
+  {
+    this->ForegroundLikelihood = f;
+    this->CustomLikelihood = true;
+  }
+
+  void SetBackgroundLikelihoodFunction(boost::function<float (const PixelType& pixel)> f)
+  {
+    this->BackgroundLikelihood = f;
+    this->CustomLikelihood = true;
+  }
 
 protected:
 
@@ -181,8 +187,6 @@ protected:
   /** Perform the s-t min cut */
   void CutGraph();
 
-
-
   /** The ITK data structure for storing the values that we will compute the histogram of. */
   typename SampleType::Pointer ForegroundSample;
   typename SampleType::Pointer BackgroundSample;
@@ -201,6 +205,16 @@ protected:
   /** Store the node ids of the terminals */
   unsigned int SourceNodeId;
   unsigned int SinkNodeId;
+
+
+  /** The function pointer that gets called to determine the likelihood that the pixel belongs to the foreground. */
+  boost::function<float (const PixelType& pixel)> ForegroundLikelihood;
+
+  /** The function pointer that gets called to determine the likelihood that the pixel belongs to the background. */
+  boost::function<float (const PixelType& pixel)> BackgroundLikelihood;
+
+  /** If a custom likelihood function is set, we don't need to compute histograms internally. */
+  bool CustomLikelihood = false;
 };
 
 #include "ImageGraphCut.hpp"

@@ -156,16 +156,6 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::PerformSegmentation()
 {
   // This function performs some initializations and then creates and cuts the graph
 
-  // Ensure at least one pixel has been specified for both the foreground and background
-  std::cout << "Currently there are " << this->Sources.size() << " sources and "
-            << this->Sinks.size() << " sinks." << std::endl;
-  if((this->Sources.size() <= 0) || (this->Sinks.size() <= 0))
-  {
-    std::cerr << "At least one source (foreground) pixel and one sink (background) "
-                 "pixel must be specified!" << std::endl;
-    return;
-  }
-
   // Blank the NodeImage
   itk::ImageRegionIterator<NodeImageType>
       nodeImageIterator(this->NodeImage,
@@ -191,6 +181,16 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateSamples()
 {
   // This function creates ITK samples from the scribbled pixels and then computes the foreground and background histograms
   std::cout << "CreateSamples()" << std::endl;
+
+  // Ensure at least one pixel has been specified for both the foreground and background
+  std::cout << "Currently there are " << this->Sources.size() << " sources and "
+            << this->Sinks.size() << " sinks." << std::endl;
+  if((this->Sources.size() <= 0) || (this->Sinks.size() <= 0))
+  {
+    std::cerr << "At least one source (foreground) pixel and one sink (background) "
+                 "pixel must be specified!" << std::endl;
+    return;
+  }
 
   unsigned int numberOfComponentsPerPixel =
       this->Image->GetNumberOfComponentsPerPixel();
@@ -394,7 +394,10 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
   // Add t-edges and set t-edge weights (links from image nodes to virtual background and virtual foreground node)
 
   // Compute the histograms of the selected foreground and background pixels
-  CreateSamples();
+  if(!this->CustomLikelihood)
+  {
+    CreateSamples();
+  }
 
   itk::ImageRegionIterator<TImage>
       imageIterator(this->Image,
