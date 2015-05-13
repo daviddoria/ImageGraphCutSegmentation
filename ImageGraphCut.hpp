@@ -79,7 +79,9 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
           s,
           t);
 
-//  // Iterate over the node image, querying the graph object for the association of each pixel and storing them as the output mask
+  std::cout << "Finished max_flow()." << std::endl;
+
+  // Iterate over the node image, querying the graph object for the association of each pixel and storing them as the output mask
   itk::ImageRegionConstIterator<NodeImageType>
       nodeImageIterator(this->NodeImage, this->NodeImage->GetLargestPossibleRegion());
   nodeImageIterator.GoToBegin();
@@ -103,6 +105,7 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CutGraph()
     ++nodeImageIterator;
   }
 
+  std::cout << "Finished CutGraph()." << std::endl;
 }
 
 // This function assumes that the ReverseEdges and EdgeWeights members are already large enough to accept the

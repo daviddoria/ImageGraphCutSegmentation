@@ -202,10 +202,11 @@ protected:
   /** The image to be segmented */
   typename TImage::Pointer Image;
 
-  /** Store the node ids of the terminals */
+  /** The node id of the foreground terminal. */
   unsigned int SourceNodeId;
-  unsigned int SinkNodeId;
 
+  /** The node id of the background terminal. */
+  unsigned int SinkNodeId;
 
   /** The function pointer that gets called to determine the likelihood that the pixel belongs to the foreground. */
   boost::function<float (const PixelType& pixel)> ForegroundLikelihood;
