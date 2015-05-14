@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // STL
 #include <cmath>
+#include <algorithm>
 
 // Boost
 #include <boost/graph/boykov_kolmogorov_max_flow.hpp>
@@ -401,7 +402,7 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
     CreateSamples();
   }
 
-  itk::ImageRegionIterator<TImage>
+  itk::ImageRegionIteratorWithIndex<TImage>
       imageIterator(this->Image,
                     this->Image->GetLargestPossibleRegion());
   itk::ImageRegionIterator<NodeImageType>
@@ -419,6 +420,15 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
 
   while(!imageIterator.IsAtEnd())
   {
+    itk::Index<2> currentIndex = imageIterator.GetIndex();
+
+    // Skip the computation and edge creation if the current pixel already has a fixed assignment
+    if(Helpers::Contains(this->Sinks, currentIndex) || Helpers::Contains(this->Sources, currentIndex))
+    {
+        ++imageIterator;
+        ++nodeIterator;
+        continue;
+    }
     PixelType pixel = imageIterator.Get();
     //std::cout << "Pixels have size: " << pixel.Size() << std::endl;
 
@@ -428,25 +438,25 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
       measurementVector[i] = pixel[i];
     }
 
-    float sourceHistogramValue = ForegroundLikelihood(pixel);
-    float sinkHistogramValue = BackgroundLikelihood(pixel);
+    float sourceLikelihood = ForegroundLikelihood(pixel);
+    float sinkLikelihood = BackgroundLikelihood(pixel);
 
-    if(sourceHistogramValue <= 0)
+    if(sourceLikelihood <= 0)
     {
-      sourceHistogramValue = tinyValue;
+      sourceLikelihood = tinyValue;
     }
 
-    if(sinkHistogramValue <= 0)
+    if(sinkLikelihood <= 0)
     {
-      sinkHistogramValue = tinyValue;
+      sinkLikelihood = tinyValue;
     }
 
     // Add the edge to the graph and set its weight
     // log() is the natural log
     currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(),
-                                                this->SinkNodeId, -this->Lambda*log(sourceHistogramValue));
+                                                this->SinkNodeId, -this->Lambda*log(sourceLikelihood));
     currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(),
-                                                this->SourceNodeId, -this->Lambda*log(sinkHistogramValue));
+                                                this->SourceNodeId, -this->Lambda*log(sinkLikelihood));
 
     ++imageIterator;
     ++nodeIterator;
@@ -457,7 +467,7 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
   for(unsigned int i = 0; i < this->Sources.size(); i++)
   {
     currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sources[i]),
-                                                this->SourceNodeId,  this->Lambda * std::numeric_limits<float>::max());
+                                                this->SourceNodeId,  std::numeric_limits<float>::max());
 
     currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sources[i]),
                                                 this->SinkNodeId, 0);
@@ -471,7 +481,7 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
                                                   this->SourceNodeId, 0);
 
       currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sinks[i]),
-                                                  this->SinkNodeId, this->Lambda * std::numeric_limits<float>::max());
+                                                  this->SinkNodeId, std::numeric_limits<float>::max());
   }
 
   std::cout << "Finished CreateTEdges()" << std::endl;

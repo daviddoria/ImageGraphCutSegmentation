@@ -42,6 +42,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /** Perform graph cut based segmentation on an image. Image pixels can contain any
   * number of components (i.e. grayscale, RGB, RGBA, RGBD, etc.).
+  * This is an implementation of the technique described here:
+  * http://www.eecs.berkeley.edu/~efros/courses/AP06/Papers/boykov-iccv-01.pdf
   */
 template <typename TImage, typename TPixelDifferenceFunctor = RGBPixelDifference<typename TImage::PixelType> >
 class ImageGraphCut
