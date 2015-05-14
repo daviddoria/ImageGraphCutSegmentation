@@ -87,8 +87,11 @@ public:
 
   TPixelDifferenceFunctor PixelDifferenceFunctor;
 
-  /** Several initializations are done here. */
+  /** Provide the image to segment. */
   void SetImage(TImage* const image);
+
+  /** Several initializations are done here. */
+  void Initialize();
 
   /** Get the image that we are segmenting. */
   TImage* GetImage();

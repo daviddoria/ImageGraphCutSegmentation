@@ -40,23 +40,35 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::SetImage(TImage* const imag
 {
   this->Image = TImage::New();
   ITKHelpers::DeepCopy(image, this->Image.GetPointer());
+}
 
-  // Setup the output (mask) image
-  this->ResultingSegments = ForegroundBackgroundSegmentMask::New();
-  this->ResultingSegments->SetRegions(this->Image->GetLargestPossibleRegion());
-  this->ResultingSegments->Allocate();
+template <typename TImage, typename TPixelDifferenceFunctor>
+void ImageGraphCut<TImage, TPixelDifferenceFunctor>::Initialize()
+{
+    // Setup the output (mask) image
+    this->ResultingSegments = ForegroundBackgroundSegmentMask::New();
+    this->ResultingSegments->SetRegions(this->Image->GetLargestPossibleRegion());
+    this->ResultingSegments->Allocate();
 
-  // Setup the image to store the node ids
-  this->NodeImage = NodeImageType::New();
-  this->NodeImage->SetRegions(this->Image->GetLargestPossibleRegion());
-  this->NodeImage->Allocate();
+    // Setup the image to store the node ids
+    this->NodeImage = NodeImageType::New();
+    this->NodeImage->SetRegions(this->Image->GetLargestPossibleRegion());
+    this->NodeImage->Allocate();
 
-  // Initializations
-  this->ForegroundSample = SampleType::New();
-  this->BackgroundSample = SampleType::New();
+    // Initializations
+    this->ForegroundSample = SampleType::New();
+    this->BackgroundSample = SampleType::New();
 
-  this->ForegroundHistogramFilter = SampleToHistogramFilterType::New();
-  this->BackgroundHistogramFilter = SampleToHistogramFilterType::New();
+    this->ForegroundHistogramFilter = SampleToHistogramFilterType::New();
+    this->BackgroundHistogramFilter = SampleToHistogramFilterType::New();
+
+    // Blank the NodeImage
+    ITKHelpers::SetImageToConstant(this->NodeImage.GetPointer(), 0);
+
+    // Blank the output image
+    ITKHelpers::SetImageToConstant(this->ResultingSegments.GetPointer(),
+                                   ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
+
 }
 
 template <typename TImage, typename TPixelDifferenceFunctor>
@@ -159,21 +171,7 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::PerformSegmentation()
 {
   // This function performs some initializations and then creates and cuts the graph
 
-  // Blank the NodeImage
-  itk::ImageRegionIterator<NodeImageType>
-      nodeImageIterator(this->NodeImage,
-                        this->NodeImage->GetLargestPossibleRegion());
-  nodeImageIterator.GoToBegin();
-
-  while(!nodeImageIterator.IsAtEnd())
-  {
-    nodeImageIterator.Set(0);
-    ++nodeImageIterator;
-  }
-
-  // Blank the output image
-  ITKHelpers::SetImageToConstant(this->ResultingSegments.GetPointer(),
-                                 ForegroundBackgroundSegmentMaskPixelTypeEnum::BACKGROUND);
+  this->Initialize();
 
   this->CreateGraph();
   this->CutGraph();
@@ -385,6 +383,7 @@ float ImageGraphCut<TImage, TPixelDifferenceFunctor>::InternalBackgroundLikeliho
 template <typename TImage, typename TPixelDifferenceFunctor>
 void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
 {
+  // Setup links from pixel nodes to terminal nodes
   std::cout << "CreateTEdges()" << std::endl;
 
   itk::Size<2> imageSize = this->Image->GetLargestPossibleRegion().GetSize();
@@ -442,13 +441,6 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
       sinkHistogramValue = tinyValue;
     }
 
-    // Convert the histogram value/frequency to make it as if it came from a normalized histogram
-//    if(this->BackgroundHistogram->GetTotalFrequency() == 0 ||
-//       this->ForegroundHistogram->GetTotalFrequency() == 0)
-//    {
-//      throw std::runtime_error("The foreground or background histogram TotalFrequency is 0!");
-//    }
-
     // Add the edge to the graph and set its weight
     // log() is the natural log
     currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, nodeIterator.Get(),
@@ -464,20 +456,22 @@ void ImageGraphCut<TImage, TPixelDifferenceFunctor>::CreateTEdges()
   // selected as foreground by the user
   for(unsigned int i = 0; i < this->Sources.size(); i++)
   {
-    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sources[i]), this->SourceNodeId,
-                        this->Lambda * std::numeric_limits<float>::max());
+    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sources[i]),
+                                                this->SourceNodeId,  this->Lambda * std::numeric_limits<float>::max());
 
-    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sources[i]), this->SinkNodeId, 0);
+    currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sources[i]),
+                                                this->SinkNodeId, 0);
   }
 
   // Set very high sink weights for the pixels that
   // were selected as background by the user
   for(unsigned int i = 0; i < this->Sinks.size(); i++)
   {
-      currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sinks[i]), this->SourceNodeId, 0);
+      currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sinks[i]),
+                                                  this->SourceNodeId, 0);
 
-      currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sinks[i]), this->SinkNodeId,
-                           this->Lambda * std::numeric_limits<float>::max());
+      currentNumberOfEdges = AddBidirectionalEdge(currentNumberOfEdges, this->NodeImage->GetPixel(this->Sinks[i]),
+                                                  this->SinkNodeId, this->Lambda * std::numeric_limits<float>::max());
   }
 
   std::cout << "Finished CreateTEdges()" << std::endl;
